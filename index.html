@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RY Performance</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <img src="logo.png" alt="RY Performance Logo" class="logo">
+                <h2>RY Performance</h2>
+            </div>
+            <div class="nav-menu" id="nav-menu">
+                <a href="#home" class="nav-link active">Accueil</a>
+                <a href="#gallery" class="nav-link">Galerie</a>
+                <a href="#services" class="nav-link">Services</a>
+                <a href="#faq" class="nav-link">FAQ</a>
+                <a href="#contact" class="nav-link">Contact</a>
+            </div>
+            <div class="nav-toggle" id="nav-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <div class="container">
+                <h1 class="hero-title">Votre Voiture, Votre Style</h1>
+                <p class="hero-subtitle">Offrez à votre véhicule une transformation unique grâce à nos services de personnalisation avancée</p>
+                <a href="#contact" class="btn">Réservez maintenant</a>
+                <a href="#services" class="btn btn-secondary">Nos services</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section avec PHOTOS INTERNET -->
+    <section id="gallery" class="gallery">
+        <div class="container">
+            <h2 class="section-title">Galerie Avant/Après</h2>
+            <p style="text-align: center; color: var(--text-gray); margin-bottom: 2rem;">
+                Découvrez nos réalisations sur le marché algérien
+            </p>
+            
+            <div class="gallery-grid">
+                <div class="gallery-item" onclick="openGalleryModal(1)">
+                    <img src="clio4ap.png" alt="Peinture Complète" class="gallery-image">
+                    <div class="gallery-caption">
+                        <h3>Peinture Complète</h3>
+                        <p>Clio 4 - Transformation spectaculaire</p>
+                    </div>
+                </div>
+
+                <div class="gallery-item" onclick="openGalleryModal(2)">
+                    <img src="golf7ap.png" alt="Covering Vinyl" class="gallery-image">
+                    <div class="gallery-caption">
+                        <h3>Covering Vinyl Matt</h3>
+                        <p>Golf 7 - Finition premium</p>
+                    </div>
+                </div>
+
+                <div class="gallery-item" onclick="openGalleryModal(3)">
+                    <img src="leonap.png" alt="Kit Carrosserie" class="gallery-image">
+                    <div class="gallery-caption">
+                        <h3>Kit Carrosserie Sport</h3>
+                        <p>Seat Leon - Look agressif</p>
+                    </div>
+                </div>
+
+                <div class="gallery-item" onclick="openGalleryModal(4)">
+                    <img src="poloap.png" alt="Jantes Custom" class="gallery-image">
+                    <div class="gallery-caption">
+                        <h3>Jantes Custom</h3>
+                        <p>Polo GTI - Design sportif</p>
+                    </div>
+                </div>
+
+                <div class="gallery-item" onclick="openGalleryModal(5)">
+                    <img src="tiguanap.png" alt="Vitres Teintées" class="gallery-image">
+                    <div class="gallery-caption">
+                        <h3>Vitres Teintées</h3>
+                        <p>Tiguan - Élégance et intimité</p>
+                    </div>
+                </div>
+
+                <div class="gallery-item" onclick="openGalleryModal(6)">
+                    <img src="audiap.png" alt="Coating Céramique" class="gallery-image">
+                    <div class="gallery-caption">
+                        <h3>Coating Céramique</h3>
+                        <p>Audi A3 - Brillance ultime</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Services Section -->
+    <section id="services" class="services">
+        <div class="container">
+            <h2 class="section-title">Nos Services</h2>
+            <div class="services-grid">
+                <div class="service-card" onclick="openServiceModal(1)">
+                    <div class="service-image">
+                        <img src="p.jpg" width="370" alt="Peinture Auto" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Peinture Automobile</h3>
+                        <p>Peinture complète de votre véhicule avec des finitions premium. Préparation minutieuse, apprêt de qualité et vernis protecteur pour un résultat durable.</p>
+                        <span class="service-price">À partir de 50,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(2)">
+                    <div class="service-image">
+                        <img src="c.jpg" width="370" alt="Covering Vinyl" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Covering Vinyl Complet</h3>
+                        <p>Installation de film vinyle haute qualité pour changer la couleur de votre véhicule. Protection de la peinture d'origine avec des finitions mat, brillant ou carbone.</p>
+                        <span class="service-price">À partir de 80,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(3)">
+                    <div class="service-image">
+                        <img src="k.jpg" width="370" alt="Kit Carrosserie" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Installation Kit Carrosserie</h3>
+                        <p>Pose de kits carrosserie sport : spoilers, jupes latérales, pare-chocs modifiés. Installation professionnelle et peinture assortie.</p>
+                        <span class="service-price">À partir de 120,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(4)">
+                    <div class="service-image">
+                        <img src="j.jpg" alt="Jantes Custom" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Personnalisation Jantes</h3>
+                        <p>Customisation de jantes : peinture, polissage, finitions spéciales. Large gamme de couleurs et d'effets pour un style unique.</p>
+                        <span class="service-price">À partir de 40,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(5)">
+                    <div class="service-image">
+                        <img src="g.jpg" alt="Vitres Teintées" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Vitres Teintées</h3>
+                        <p>Film solaire haute qualité pour vos vitres. Protection UV, intimité et esthétique. Plusieurs niveaux de teinte disponibles.</p>
+                        <span class="service-price">À partir de 15,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(6)">
+                    <div class="service-image">
+                        <img src="car.jpg" alt="Phares Teintés" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Teinte Phares/Feux</h3>
+                        <p>Personnalisation de vos phares et feux arrière avec films teintés. Look sportif garanti tout en respectant la réglementation.</p>
+                        <span class="service-price">À partir de 20,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(7)">
+                    <div class="service-image">
+                        <img src="r.jpg" alt="Stickers Graphics" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Stickers & Graphics</h3>
+                        <p>Création et pose de stickers personnalisés, bandes sportives, logos. Design unique selon vos envies avec des matériaux durables.</p>
+                        <span class="service-price">À partir de 25,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(8)">
+                    <div class="service-image">
+                        <img src="z.jpg" alt="Coating Céramique" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>Coating Céramique</h3>
+                        <p>Protection céramique longue durée pour votre carrosserie. Brillance exceptionnelle et protection contre les rayures et UV.</p>
+                        <span class="service-price">À partir de 60,000 DA</span>
+                    </div>
+                </div>
+
+                <div class="service-card" onclick="openServiceModal(9)">
+                    <div class="service-image">
+                        <img src="t.png" alt="Film Protection" loading="lazy">
+                    </div>
+                    <div class="service-content">
+                        <h3>PPF Pare-chocs Avant</h3>
+                        <p>Film de protection transparent pour pare-chocs avant. Protection contre les impacts de graviers et rayures du quotidien.</p>
+                        <span class="service-price">À partir de 45,000 DA</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="faq">
+        <div class="container">
+            <h2 class="section-title">Questions Fréquentes</h2>
+            <div class="faq-container">
+                <div class="faq-item">
+                    <div class="faq-question" tabindex="0">
+                        <h3>Quelle est la différence entre peinture et covering?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>La peinture est définitive et modifie la couleur originale du véhicule. Le covering vinyl est réversible et protège la peinture d'origine. Le vinyl offre plus d'options de finitions (mat, brillant, carbone, chrome).</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" tabindex="0">
+                        <h3>Combien de temps durent vos travaux?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Vitres teintées: 1 jour, Jantes: 2-3 jours, Covering complet: 3-5 jours, Peinture complète: 7-10 jours, Kit carrosserie: 5-7 jours. Les délais peuvent varier selon la complexité.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" tabindex="0">
+                        <h3>Offrez-vous une garantie sur vos travaux?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Oui, tous nos travaux sont garantis 1 an contre les défauts de fabrication et d'installation. Le covering vinyl est garanti 3 ans et le coating céramique 2 ans.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" tabindex="0">
+                        <h3>Comment réserver et quels sont vos modes de paiement?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Réservation via le formulaire ci-dessous ou par téléphone. Paiements acceptés: Baridi Mob, Dahabiya, espèces, virements bancaires. Acompte de 30% requis à la réservation.</p>
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-question" tabindex="0">
+                        <h3>Applications de paiement mobile supportées?</h3>
+                        <span class="faq-icon">+</span>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Nous acceptons Baridi Mob, Dahabiya, et les paiements main à main. Possibilité de connecter directement avec ces apps pour faciliter les transactions. QR codes disponibles en atelier.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contact" class="contact">
+        <div class="container">
+            <h2 class="section-title">Réserver Votre Service</h2>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <h3>Informations Contact</h3>
+                    <div class="contact-item">
+                        <strong>Téléphone:</strong>
+                        <p>+213 555 123 456</p>
+                    </div>
+                    <div class="contact-item">
+                        <strong>Email:</strong>
+                        <p>ryperformance@gmail.dz</p>
+                    </div>
+                    <div class="contact-item">
+                        <strong>Adresse:</strong>
+                        <p>Zone Industrielle, Oran 31000</p>
+                    </div>
+                    <div class="contact-item">
+                        <strong>Horaires:</strong>
+                        <p>Dim-Jeu: 8h-17h<br>Sam: 8h-14h</p>
+                    </div>
+                </div>
+
+                <div class="contact-form-container">
+                    <form id="booking-form" class="contact-form" autocomplete="off" novalidate>
+                        <div class="form-group">
+                            <label for="name">Nom Complet *</label>
+                            <input type="text" id="name" name="name" autocomplete="off" required>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="phone">Téléphone *</label>
+                                <input type="tel" id="phone" name="phone" autocomplete="off" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" name="email" autocomplete="off">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="model">Modèle Véhicule *</label>
+                                <input type="text" id="model" name="model" placeholder="Ex: BMW M3" autocomplete="off" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="year">Année *</label>
+                                <input type="number" id="year" name="year" min="1990" max="2026" placeholder="2020" autocomplete="off" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Services Souhaités *</label>
+                            <button type="button" id="select-services-btn" class="services-selector-btn">
+                                <span id="selected-services-display">Cliquez pour sélectionner les services</span>
+                                <span class="arrow-icon">▼</span>
+                            </button>
+                            <div id="selected-services-tags" class="selected-tags"></div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message ou Détails Spécifiques</label>
+                            <textarea id="message" name="message" rows="4" placeholder="Décrivez vos besoins, couleurs souhaitées, délais, etc."></textarea>
+                        </div>
+
+                        <button type="submit" class="submit-button">Réserver</button>
+                        <p class="booking-admin-hint">Tu peux te connecter avec l'admin</p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>RY Performance</h3>
+                    <p>Votre spécialiste en personnalisation automobile premium à Oran. Qualité garantie et service client exceptionnel.</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Services</h4>
+                    <ul>
+                        <li>Peinture Automobile</li>
+                        <li>Covering Vinyl</li>
+                        <li>Kit Carrosserie</li>
+                        <li>Jantes Custom</li>
+                    </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h4>Contact</h4>
+                    <ul>
+                        <li>+213 555 123 456</li>
+                        <li>ryperformance@gmail.dz</li>
+                        <li>Zone Industrielle, Oran</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>&copy; 2025 RY Performance. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ============================================
+         MODALS
+         ============================================ -->
+
+    <!-- Modal Galerie Avant/Après - TEXTE NOIR -->
+    <div id="gallery-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="gallery-modal-title">Transformation</h2>
+                <span class="close" onclick="closeModal('gallery-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="comparison-container">
+                    <div class="comparison-side">
+                        <h3 style="color: #e74c3c; margin-bottom: 1rem;">🔴 AVANT</h3>
+                        <img id="gallery-before-img" src="" alt="Avant">
+                    </div>
+                    <div class="comparison-side">
+                        <h3 style="color: #27ae60; margin-bottom: 1rem;">🟢 APRÈS</h3>
+                        <img id="gallery-after-img" src="" alt="Après">
+                    </div>
+                </div>
+                <div class="project-details">
+                    <h4>Détails du Projet</h4>
+                    <p id="gallery-modal-desc"></p>
+                    <p><strong>Véhicule:</strong> <span id="gallery-modal-vehicle"></span></p>
+                    <p><strong>Durée:</strong> <span id="gallery-modal-duration"></span></p>
+                    <p><strong>Services:</strong> <span id="gallery-modal-services"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Service Détails -->
+    <div id="service-modal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h2 id="service-modal-title">Service</h2>
+                <span class="close" onclick="closeModal('service-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="service-detail-container">
+                    <div class="service-detail-left">
+                        <img id="service-modal-img" src="" alt="Service">
+                    </div>
+                    <div class="service-detail-right">
+                        <div class="service-detail-section">
+                            <h4>Description</h4>
+                            <p id="service-modal-desc"></p>
+                        </div>
+                        <div class="service-detail-section">
+                            <h4>Types & Options</h4>
+                            <ul id="service-modal-types"></ul>
+                        </div>
+                        <div class="service-detail-section">
+                            <h4>Durée Estimée</h4>
+                            <p id="service-modal-duration"></p>
+                        </div>
+                        <div class="service-detail-section">
+                            <h4>Tarif</h4>
+                            <p class="service-detail-price" id="service-modal-price"></p>
+                        </div>
+                        <a href="#contact" onclick="closeModal('service-modal')" class="btn" style="margin-top: 1.5rem; display: inline-block;">
+                            Demander un Devis
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Sélection Services -->
+    <div id="services-modal" class="modal">
+        <div class="modal-content services-modal-content">
+            <span class="modal-close" onclick="closeModal('services-modal')">&times;</span>
+            <h3>Sélectionnez vos services</h3>
+            <div class="services-selection-grid">
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="peinture" data-price="50000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Peinture Automobile</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="vinyl" data-price="80000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Covering Vinyl Complet</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="bodykit" data-price="120000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Kit Carrosserie</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="rims" data-price="40000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Jantes Customization</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="tint" data-price="15000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Vitres Teintées</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="lights" data-price="20000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Phares/Feux Teintés</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="decals" data-price="25000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Stickers & Graphics</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="ceramic" data-price="60000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">Coating Céramique</span>
+                    </div>
+                </label>
+                <label class="service-checkbox-item">
+                    <input type="checkbox" name="services" value="ppf" data-price="45000">
+                    <span class="checkbox-custom"></span>
+                    <div class="service-check-content">
+                        <span class="service-check-name">PPF Pare-chocs</span>
+                    </div>
+                </label>
+            </div>
+            <button type="button" id="confirm-services" class="confirm-button">Confirmer la sélection</button>
+        </div>
+    </div>
+
+    <!-- Modal Confirmation Prix -->
+    <div id="price-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Récapitulatif de votre Réservation</h2>
+                <span class="close" onclick="closeModal('price-modal')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="price-details"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Succès -->
+    <div id="success-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div class="modal-body" style="padding: 3rem 2rem;">
+                <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+                <h2 style="color: var(--primary-color); margin-bottom: 1rem;">Réservation Confirmée !</h2>
+                <p style="font-size: 1.1rem; margin-bottom: 2rem;">
+                    Merci ! Nous avons bien reçu votre demande.<br>
+                    Notre équipe vous contactera très prochainement.
+                </p>
+                <button type="button" onclick="closeModal('success-modal')" class="btn">
+                    OK, Compris
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Widget Chat -->
+    <div id="chat-widget-btn" class="chat-widget-btn" onclick="toggleChatWidget(event)">
+        💬
+        <span class="chat-notification-badge" id="chatBadge" style="display: none;">!</span>
+    </div>
+
+    <div id="chatWidget" class="chat-widget" style="display: none;" onclick="event.stopPropagation()">
+        <div class="chat-header">
+            <h3>Messagerie</h3>
+            <button onclick="toggleChatWidget(event)" class="chat-close-btn">&times;</button>
+        </div>
+        
+        <div class="chat-body" id="chatBody">
+            <div id="chatLoginPrompt">
+                <p style="text-align:center; padding: 20px; color: var(--text-gray);">
+                    Connectez-vous pour discuter avec l'administrateur.
+                </p>
+                <div style="display: flex; gap: 10px; justify-content: center; margin-top:10px;">
+                    <button onclick="showClientAuthModal('login')" class="btn btn-small">Connexion</button>
+                    <button onclick="showClientAuthModal('signup')" class="btn btn-secondary btn-small">Inscription</button>
+                </div>
+            </div>
+            
+            <div id="chatConversationArea" style="display: none; height: 100%; flex-direction: column;">
+                <div class="chat-messages" id="chatMessagesList"></div>
+                
+                <div class="chat-input-area" onclick="event.stopPropagation()">
+                    <label for="chatImageInput" style="cursor:pointer; font-size: 24px;" onclick="event.stopPropagation()">📷</label>
+                    <input type="file" id="chatImageInput" accept="image/*,video/*" style="display:none" onchange="sendChatImage(this)">
+                    
+                    <button id="recordAudioBtn" type="button" style="background:none;border:none;font-size:24px;cursor:pointer;">🎤</button>
+                    
+                    <input type="text" id="chatMessageInput" placeholder="Écrivez..." onkeypress="handleChatKeyPress(event)" onclick="event.stopPropagation()">
+                    
+                    <button onclick="sendChatText(event)" class="btn-send-icon" type="button">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Authentification Client -->
+    <div id="clientAuthModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <span class="modal-close" onclick="closeModal('clientAuthModal')">&times;</span>
+            <h3 id="authModalTitle">Connexion</h3>
+            
+            <form id="clientLoginForm" style="display:block;">
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="tel" id="login-client-phone" required placeholder="Votre numéro">
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="login-client-password" required>
+                </div>
+                <button type="button" onclick="handleClientLogin()" class="btn" style="width:100%">Se connecter</button>
+            </form>
+
+            <form id="clientSignupForm" style="display:none;">
+                <div class="form-group">
+                    <label>Nom Complet</label>
+                    <input type="text" id="signup-client-name" required>
+                </div>
+                <div class="form-group">
+                    <label>Téléphone</label>
+                    <input type="tel" id="signup-client-phone" required>
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="signup-client-password" required>
+                </div>
+                <button type="button" onclick="handleClientSignup()" class="btn" style="width:100%">S'inscrire</button>
+            </form>
+            
+            <p id="authError" style="color:red; text-align:center; margin-top:10px; display:none;"></p>
+        </div>
+    </div>
+
+    <!-- Si besoin : même machine mais autre IP — <script>window.API_BASE='http://192.168.x.x:5000'</script> -->
+    <script src="script.js"></script>
+</body>
+</html>

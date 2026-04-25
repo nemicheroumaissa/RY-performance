@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - RY Performance</title>
+    <link rel="stylesheet" href="admin.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <!-- Socket.io pour la messagerie temps réel -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="loginSection" class="login-container">
+        <div class="login-form">
+            <h2>🔐 Admin Panel</h2>
+            
+            <!-- Onglets Login/Signup -->
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" onclick="switchAuthTab('login')">Connexion</button>
+                <button type="button" class="auth-tab" onclick="switchAuthTab('signup')">Inscription</button>
+            </div>
+
+            <div id="loginError"></div>
+
+            <!-- Formulaire de connexion -->
+            <form id="loginForm" class="auth-tab-content active">
+                <div class="form-group">
+                    <label for="login-username">Nom d'utilisateur ou Email</label>
+                    <input type="text" id="login-username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Se connecter</button>
+            </form>
+
+            <!-- Formulaire d'inscription -->
+            <div id="signupForm" class="auth-tab-content">
+                <div class="form-group">
+                    <label for="signup-nom">Nom complet *</label>
+                    <input type="text" id="signup-nom" name="nom">
+                </div>
+                <div class="form-group">
+                    <label for="signup-email">Email *</label>
+                    <input type="email" id="signup-email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="signup-telephone">Téléphone</label>
+                    <input type="tel" id="signup-telephone" name="telephone" placeholder="+213 XXX XXX XXX">
+                </div>
+                <div class="form-group">
+                    <label for="signup-username">Nom d'utilisateur *</label>
+                    <input type="text" id="signup-username" name="signup_username">
+                </div>
+                <div class="form-group">
+                    <label for="signup-password">Mot de passe *</label>
+                    <input type="password" id="signup-password" name="signup_password" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="signup-message">Message pour l'administrateur (optionnel)</label>
+                    <textarea id="signup-message" name="message" rows="3" placeholder="Pourquoi souhaitez-vous accéder au panel admin ?"></textarea>
+                </div>
+                <button type="button" onclick="handleSignup()" class="btn" style="width: 100%;">Demander l'accès</button>
+            </div>
+
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="index.html" style="color: var(--primary-color); text-decoration: none;">← Retour au site</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="dashboard">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">RY Performance Admin</div>
+                <div class="user-info">
+                    <span id="userName">👨‍💼 Chargement...</span>
+                    <button onclick="logout()" class="btn btn-secondary btn-small">Déconnexion</button>
+                    <a href="index.html" class="btn btn-small">Retour au site</a>
+                </div>
+            </div>
+
+            <!-- Onglets de navigation -->
+            <div class="tabs-container" id="adminTabs">
+                <button class="tab-btn active" onclick="switchAdminTab('reservations')">Réservations</button>
+                <button class="tab-btn" onclick="switchAdminTab('demandes')" id="demandesTab" style="display: none;">
+                    Demandes d'accès <span class="badge" id="demandesCount">0</span>
+                </button>
+                <button class="tab-btn" onclick="switchAdminTab('messages')" id="messagesTab">
+                    Messagerie <span class="badge" id="messagesUnreadBadge">0</span>
+                </button>
+            </div>
+
+            <!-- Onglet Réservations -->
+            <div id="reservationsTabContent" class="admin-tab-panel active">
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalOrders">0</span>
+                        <div class="stat-label">Total Commandes</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="pendingOrders">0</span>
+                        <div class="stat-label">Non Traitées</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="returningCustomers">0</span>
+                        <div class="stat-label">Clients Fidèles</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalRevenue">0 DZD</span>
+                        <div class="stat-label">Chiffre d'Affaires</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="averageOrder">0 DZD</span>
+                        <div class="stat-label">Panier Moyen</div>
+                    </div>
+                </div>
+
+                <!-- Commands Management -->
+                <div class="commands-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Gestion des Commandes</h3>
+                        <div style="display:flex;gap:1rem;align-items:center;">
+                            <button onclick="refreshOrders()" class="btn btn-success">🔄 Actualiser</button>
+                            <button onclick="openAddReservationModal()" class="btn btn-secondary">➕ Ajouter</button>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter -->
+                    <div class="search-filter">
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher par nom, téléphone, véhicule..." onkeyup="filterOrders()">
+                        <select id="statusFilter" onchange="filterOrders()">
+                            <option value="">Tous les statuts</option>
+                            <option value="Nouveau">Nouveau</option>
+                            <option value="En cours">En cours</option>
+                            <option value="Terminé">Terminé</option>
+                            <option value="Annulé">Annulé</option>
+                        </select>
+                        <select id="discountFilter" onchange="filterOrders()">
+                            <option value="">Tous les clients</option>
+                            <option value="true">Clients fidèles</option>
+                            <option value="false">Nouveaux clients</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="ordersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID Commande</th>
+                                    <th>Client</th>
+                                    <th>Contact</th>
+                                    <th>Véhicule</th>
+                                    <th>Services</th>
+                                    <th>Prix</th>
+                                    <th>Message</th>
+                                    <th>Statut & Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody"></tbody>
+                        </table>
+                        <div id="emptyState" class="empty-state" style="display: none;">
+                            <div class="empty-state-icon">📋</div>
+                            <h3>Aucune commande trouvée</h3>
+                            <p>Les commandes apparaîtront ici une fois soumises.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Demandes d'accès -->
+            <div id="demandesTabContent" class="admin-tab-panel">
+                <div class="commands-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Demandes d'Accès en Attente</h3>
+                        <button onclick="loadPendingRequests()" class="btn btn-success">🔄 Actualiser</button>
+                    </div>
+                    <div class="demandes-grid" id="demandesGrid"></div>
+                </div>
+            </div>
+
+            <!-- Onglet Messagerie -->
+            <div id="messagesTabContent" class="admin-tab-panel">
+                <div class="commands-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Messagerie Clients</h3>
+                        <button onclick="loadAdminConversations()" class="btn btn-success btn-small">🔄 Actualiser</button>
+                    </div>
+                    <div class="admin-chat-container">
+                        <!-- Liste des conversations -->
+                        <div class="admin-chat-conversations">
+                            <div class="admin-chat-conv-header">
+                                <h4>Conversations</h4>
+                            </div>
+                            <div id="adminConversationsList" class="admin-chat-conv-list">
+                                <!-- Conversations chargées en JS -->
+                            </div>
+                        </div>
+
+                        <!-- Zone de discussion -->
+                        <div class="admin-chat-thread">
+                            <div class="admin-chat-thread-header">
+                                <div class="admin-chat-thread-title">
+                                    <h4 id="adminChatClientName">Sélectionnez une conversation</h4>
+                                    <span id="adminChatSubtitle" class="admin-chat-subtitle"></span>
+                                </div>
+                                <div class="admin-chat-thread-actions">
+                                    <button type="button" class="btn btn-danger btn-small" onclick="deleteAdminConversation()">Supprimer la conversation</button>
+                                </div>
+                            </div>
+
+                            <div id="adminChatMessages" class="admin-chat-messages">
+                                <!-- Messages chargés en JS -->
+                            </div>
+
+                            <div class="admin-chat-input" id="adminChatInputArea">
+                                <label for="adminChatImageInput" class="admin-chat-icon">📷</label>
+                                <input id="adminChatImageInput" type="file" accept="image/*,video/*" style="display:none" onchange="sendAdminChatImage(this)">
+
+                                <button id="adminRecordAudioBtn" type="button" class="admin-chat-icon">🎤</button>
+
+                                <input id="adminChatMessageInput" type="text" placeholder="Écrire un message..." onkeypress="handleAdminChatKeyPress(event)">
+
+                                <button type="button" class="admin-chat-send-btn" onclick="sendAdminChatText(event)">➤</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>📋 Détails de la Commande</h3>
+                <button class="close" onclick="closeModal('detailModal')">&times;</button>
+            </div>
+            <div id="detailContent" class="detail-content"></div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirmer la Suppression</h3>
+                <button class="close" onclick="closeModal('deleteModal')">&times;</button>
+            </div>
+            <p>Êtes-vous sûr de vouloir supprimer cette commande ? Cette action est irréversible.</p>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                <button onclick="closeModal('deleteModal')" class="btn btn-secondary">Annuler</button>
+                <button id="confirmDelete" class="btn btn-danger">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Price Modal -->
+    <div id="priceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Saisir le Prix</h3>
+                <button class="close" onclick="closeModal('priceModal')">&times;</button>
+            </div>
+
+            <div style="margin-bottom:1rem;">
+                <div style="color:var(--silver);font-size:0.9rem;">
+                    Remise fidélité (-20 %) : <strong id="priceRemiseIndicator">—</strong>
+                </div>
+            </div>
+
+            <input type="hidden" id="priceReservationId" />
+
+            <div class="form-group">
+                <label>Prix de base (DZD)</label>
+                <input type="number" id="priceBaseInput" min="0" step="1" placeholder="Ex: 200000">
+            </div>
+            <div class="form-group">
+                <label>Prix final (DZD)</label>
+                <input type="number" id="priceFinalInput" min="0" step="1" placeholder="Ex: 160000">
+            </div>
+            <div class="form-group">
+                <label>Délai de la remise</label>
+                <input type="text" id="priceDelaiInput" placeholder="Ex : 7 jours après validation du devis">
+                <small style="display:block;color:var(--silver);margin-top:0.35rem;">Texte libre affiché au client si une remise ou un cadre « remise » est utilisé.</small>
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button onclick="closeModal('priceModal')" class="btn btn-secondary">Annuler</button>
+                <button onclick="submitPriceUpdate()" class="btn btn-success">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Modifier la Réservation</h3>
+                <button class="close" onclick="closeModal('editModal')">&times;</button>
+            </div>
+
+            <input type="hidden" id="editReservationId" />
+
+            <div class="form-group">
+                <label>Nom complet</label>
+                <input type="text" id="editNameInput" placeholder="Nom">
+            </div>
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" id="editPhoneInput" placeholder="Téléphone">
+            </div>
+            <div class="form-group">
+                <label>Email (optionnel)</label>
+                <input type="email" id="editEmailInput" placeholder="Email">
+            </div>
+            <div class="form-group">
+                <label>Modèle du véhicule</label>
+                <input type="text" id="editModelInput" placeholder="Ex: BMW M3">
+            </div>
+            <div class="form-group">
+                <label>Année</label>
+                <input type="number" id="editYearInput" min="1900" max="2100" step="1" placeholder="Ex: 2020">
+            </div>
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="editMessageInput" rows="4" placeholder="Message / détails"></textarea>
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button onclick="closeModal('editModal')" class="btn btn-secondary">Annuler</button>
+                <button onclick="submitEditReservation()" class="btn btn-success">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ajouter une Réservation</h3>
+                <button class="close" onclick="closeModal('addModal')">&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label>Nom complet</label>
+                <input type="text" id="addNameInput" placeholder="Nom">
+            </div>
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" id="addPhoneInput" placeholder="Téléphone">
+            </div>
+            <div class="form-group">
+                <label>Email (optionnel)</label>
+                <input type="email" id="addEmailInput" placeholder="Email">
+            </div>
+            <div class="form-group">
+                <label>Modèle du véhicule</label>
+                <input type="text" id="addModelInput" placeholder="Ex: BMW M3">
+            </div>
+            <div class="form-group">
+                <label>Année</label>
+                <input type="number" id="addYearInput" min="1900" max="2100" step="1" placeholder="Ex: 2020">
+            </div>
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="addMessageInput" rows="4" placeholder="Message / détails"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Services</label>
+                <div class="services-checkbox-grid" id="addServicesContainer">
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="peinture" data-name="Phares/Feux Teintés">Peinture Automobile</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="vinyl" data-name="Covering Vinyl Complet">Covering Vinyl</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="bodykit" data-name="Kit Carrosserie">Kit Carrosserie</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="rims" data-name="Jantes Customization">Jantes Custom</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="tint" data-name="Vitres Teintées">Vitres Teintées</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="lights" data-name="Phares/Feux Teintés">Phares/Feux Teintés</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="decals" data-name="Stickers & Graphics">Stickers</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="ceramic" data-name="Coating Céramique">Coating Céramique</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="ppf" data-name="PPF Pare-chocs">PPF Pare-chocs</label>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Photos (max 5)</label>
+                <input type="file" id="addPhotosInput" accept="image/*" multiple>
+                <small style="display:block;color:var(--silver);margin-top:0.35rem;">JPG/PNG/GIF - maximum 5 photos.</small>
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button onclick="closeModal('addModal')" class="btn btn-secondary">Annuler</button>
+                <button onclick="submitAddReservation()" class="btn btn-success">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API par défaut : http://(hostname de cette page):5000 — surcharge : <script>window.API_BASE='http://127.0.0.1:5000'</script> -->
+    <script src="admin.js"></script>
+</body>
+</html>

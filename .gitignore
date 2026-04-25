@@ -1,0 +1,39 @@
+# Node modules (très important)
+
+node_modules/
+
+# Environment variables (sensible ⚠️)
+
+.env
+
+# Logs
+
+*.log
+logs/
+
+# Uploads (fichiers utilisateurs)
+
+uploads/
+
+# OS files
+
+.DS_Store
+Thumbs.db
+
+# Cache
+
+.cache/
+npm-debug.log*
+
+# Build (si tu ajoutes plus tard React ou autre)
+
+dist/
+build/
+
+# Optional: ignore SQL dumps si besoin
+
+*.sql
+
+# IDE (optionnel)
+
+.vscode/
