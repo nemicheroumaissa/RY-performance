@@ -2,6 +2,11 @@ const db = require('../config/database');
 const nodemailer = require('nodemailer');
 const { buildQuotePdfBuffer } = require('../utils/quotePdf');
 
+function formatDzdValue(value) {
+    const n = Math.round(Number(value) || 0);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DZD';
+}
+
 let delaiRemiseColumnEnsured = false;
 
 async function ensureDelaiRemiseColumn() {
@@ -268,13 +273,27 @@ exports.updateReservationStatus = async (req, res) => {
 exports.updatePrice = async (req, res) => {
     try {
         const { id } = req.params;
-        const { prix_base, remise, prix_final, delai_remise } = req.body;
+        const { prix_base, remise, prix_final, delai_remise, services_pricing } = req.body;
 
         await ensureDelaiRemiseColumn();
         await db.query(
             'UPDATE reservations SET prix_base = ?, remise = ?, prix_final = ?, delai_remise = ? WHERE id = ?',
             [prix_base, remise || 0, prix_final, delai_remise || null, id]
         );
+
+        if (Array.isArray(services_pricing) && services_pricing.length > 0) {
+            const [rsRows] = await db.query(
+                'SELECT id FROM reservation_services WHERE reservation_id = ? ORDER BY id ASC',
+                [id]
+            );
+            for (let i = 0; i < rsRows.length; i += 1) {
+                const price = Math.max(0, Number(services_pricing[i]?.price) || 0);
+                await db.query(
+                    'UPDATE reservation_services SET prix_applique = ? WHERE id = ?',
+                    [price, rsRows[i].id]
+                );
+            }
+        }
 
         try {
             const [rows] = await db.query(`
@@ -289,15 +308,19 @@ exports.updatePrice = async (req, res) => {
             if (rows.length) {
                 const row = rows[0];
                 const [svcRows] = await db.query(`
-                    SELECT GROUP_CONCAT(
-                        COALESCE(NULLIF(TRIM(s.nom_service),''), NULLIF(TRIM(s.nom),''), s.code, 'Service')
-                        SEPARATOR '||'
-                    ) AS sc
+                    SELECT
+                        COALESCE(NULLIF(TRIM(s.nom_service),''), NULLIF(TRIM(s.nom),''), s.code, 'Service') AS service_nom,
+                        COALESCE(rs.prix_applique, 0) AS prix_applique
                     FROM reservation_services rs
                     LEFT JOIN services s ON s.id = rs.service_id
                     WHERE rs.reservation_id = ?
+                    ORDER BY rs.id ASC
                 `, [id]);
-                const servicesLines = (svcRows[0]?.sc || '').split('||').map(s => s.trim()).filter(Boolean);
+                const servicesLines = (svcRows || []).map((svc) => {
+                    const name = String(svc.service_nom || 'Service').trim();
+                    const price = Number(svc.prix_applique) || 0;
+                    return price > 0 ? `${name} - ${formatDzdValue(price)}` : name;
+                });
                 const emailTo = String(row.client_email_q || '').trim();
 
                 if (emailTo && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {

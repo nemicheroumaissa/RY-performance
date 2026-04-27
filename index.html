@@ -564,7 +564,10 @@
     <div id="chatWidget" class="chat-widget" style="display: none;" onclick="event.stopPropagation()">
         <div class="chat-header">
             <h3>Messagerie</h3>
-            <button onclick="toggleChatWidget(event)" class="chat-close-btn">&times;</button>
+            <div class="chat-header-actions">
+                <button type="button" class="chat-logout-btn chat-logout-btn-header" onclick="logoutClient()">Se déconnecter</button>
+                <button onclick="toggleChatWidget(event)" class="chat-close-btn">&times;</button>
+            </div>
         </div>
         
         <div class="chat-body" id="chatBody">

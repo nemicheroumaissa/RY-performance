@@ -14,6 +14,18 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+function getAdminPanelUrl(req) {
+    const fromAdminPanel = String(process.env.ADMIN_PANEL_URL || '').trim();
+    if (fromAdminPanel) return fromAdminPanel;
+    const fromFrontend = String(process.env.FRONTEND_URL || '').trim();
+    if (fromFrontend) return fromFrontend.replace(/\/+$/, '') + '/admin.html';
+    const originHeader = String(req?.headers?.origin || '').trim();
+    if (originHeader) return originHeader.replace(/\/+$/, '') + '/admin.html';
+    const host = String(req?.headers?.host || '').trim();
+    if (host) return `http://${host.replace(/\/+$/, '')}/admin.html`;
+    return 'http://127.0.0.1:5500/admin.html';
+}
+
 // ============================================
 // FONCTION POUR CRÉER UN ADMIN PAR DÉFAUT
 // ============================================
@@ -99,7 +111,7 @@ exports.signup = async (req, res) => {
 
         // Envoyer un email à l'admin
         try {
-            const adminUrl = 'http://127.0.0.1:5500/admin.html';
+            const adminUrl = getAdminPanelUrl(req);
             
             const mailOptions = {
                 from: process.env.EMAIL_FROM,
@@ -351,7 +363,7 @@ exports.approveUser = async (req, res) => {
         // Envoyer un email à l'utilisateur
         if (users.length > 0) {
             try {
-                const adminUrl = 'http://127.0.0.1:5500/admin.html';
+                const adminUrl = getAdminPanelUrl(req);
                 
                 const mailOptions = {
                     from: process.env.EMAIL_FROM,

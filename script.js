@@ -78,7 +78,7 @@ function applyMessageStatusChip(statusSpan, status) {
         statusSpan.textContent = 'Reçu';
         statusSpan.className   = 'msg-status msg-status-delivered';
     } else {
-        statusSpan.textContent = 'Envoyé';
+        statusSpan.textContent = 'Env.';
         statusSpan.className   = 'msg-status msg-status-sent';
     }
 }
@@ -615,9 +615,21 @@ function checkClientAuth() {
 function updateChatUI(isLoggedIn) {
     const loginPrompt = document.getElementById('chatLoginPrompt');
     const convArea    = document.getElementById('chatConversationArea');
+    const logoutBtn   = document.querySelector('.chat-logout-btn-header');
     if (loginPrompt) loginPrompt.style.display = isLoggedIn ? 'none'  : 'block';
     if (convArea)    convArea.style.display    = isLoggedIn ? 'flex'  : 'none';
+    if (logoutBtn)   logoutBtn.style.display   = isLoggedIn ? 'inline-flex' : 'none';
 }
+
+window.logoutClient = function () {
+    localStorage.removeItem('clientUser');
+    localStorage.removeItem('clientToken');
+    currentClient = null;
+    currentConversationId = null;
+    const list = document.getElementById('chatMessagesList');
+    if (list) list.innerHTML = '';
+    updateChatUI(false);
+};
 
 window.toggleChatWidget = function (event) {
     if (event) event.stopPropagation();

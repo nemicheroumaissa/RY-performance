@@ -27,12 +27,16 @@ let adminConversations = [];
 let currentAdminConversationId = null;
 let currentAdminClientName = '';
 let currentPriceHasRemise = false;
+let currentPriceServices = [];
 
 // ✅ NOUVELLES VARIABLES POUR AUDIO
 let adminMediaRecorder = null;
 let adminAudioChunks = [];
 let isAdminRecording = false;
 let adminRecordingStartTime = 0;
+
+// [MOD 4] Variable pour la recherche de conversations
+let adminConvSearchQuery = '';
 
 function scrollAdminChatToBottom() {
     const container = document.getElementById('adminChatMessages');
@@ -44,6 +48,7 @@ function scrollAdminChatToBottom() {
     setTimeout(apply, 80);
 }
 
+// [MOD 5] setAdminMessageStatusSpan — gris foncé pour sent/delivered, mauve pour read
 function setAdminMessageStatusSpan(span, status) {
     const s = status || 'sent';
     if (s === 'read') {
@@ -53,17 +58,19 @@ function setAdminMessageStatusSpan(span, status) {
         span.textContent = 'Reçu';
         span.className = 'msg-status msg-status-delivered';
     } else {
-        span.textContent = 'Envoyé';
+        span.textContent = 'Env.';
         span.className = 'msg-status msg-status-sent';
     }
 }
 
+// [MOD 1] closeAdminMessageContextMenu — identique à l'original
 function closeAdminMessageContextMenu() {
     const menu = document.getElementById('admin-message-context-menu');
     if (menu) menu.remove();
     document.removeEventListener('click', closeAdminMessageContextMenu);
 }
 
+// [MOD 1] showAdminMessageContextMenu — identique à l'original (déjà clic droit)
 function showAdminMessageContextMenu(event, messageId) {
     closeAdminMessageContextMenu();
     const menu = document.createElement('div');
@@ -110,11 +117,6 @@ function isReservationClientFidele(row) {
     return v === 1 || v === true || v === '1';
 }
 
-/**
- * Fallback robust: calcule la fidélité à partir du même téléphone.
- * Règle: à partir de la 2ème réservation (même téléphone), la réservation est "fidèle".
- * On n'affiche pas "fidèle" sur la 1ère réservation.
- */
 function applyLoyaltyByPhone(orders) {
     const byPhone = new Map();
     for (const o of orders) {
@@ -126,7 +128,7 @@ function applyLoyaltyByPhone(orders) {
     for (const [, list] of byPhone.entries()) {
         list.sort((a, b) => (a.dateRaw || 0) - (b.dateRaw || 0));
         list.forEach((o, idx) => {
-            o.isFidele = idx >= 1; // 2ème réservation et + (index 1...)
+            o.isFidele = idx >= 1;
             o.discountApplied = o.isFidele;
         });
     }
@@ -269,7 +271,13 @@ async function handleSignup() {
         });
         const result = await response.json();
         if (result.success) {
-            showMessage('✅ ' + result.message, 'success', 'loginError');
+            document.getElementById('signup-nom').value = '';
+            document.getElementById('signup-email').value = '';
+            document.getElementById('signup-telephone').value = '';
+            document.getElementById('signup-username').value = '';
+            document.getElementById('signup-password').value = '';
+            document.getElementById('signup-message').value = '';
+            showMessage('Votre demande a été envoyée', 'success', 'loginError');
             setTimeout(() => switchAuthTab('login'), 3000);
         } else {
             showMessage('❌ ' + result.message, 'error', 'loginError');
@@ -395,7 +403,6 @@ async function loadOrders() {
                 images:         order.nombre_images    || 0
             }));
             
-            // Si la vue ne fournit pas correctement est_client_fidele, on calcule via le téléphone.
             applyLoyaltyByPhone(allOrders);
 
             console.log(`✅ ${allOrders.length} réservations chargées`);
@@ -479,11 +486,11 @@ function renderOrdersTable(orders) {
             }
         }
 
-        // Indication "Remise: oui" seulement tant que le prix n'est pas défini.
         const remiseIndicatorHtml = (hasFideliteRemise && !hasFinalPrice)
             ? `<div style="margin-top:4px;font-size:0.78rem;color:var(--success);font-weight:600">Remise: oui</div>`
             : '';
 
+        // [MOD 7] Boutons en icônes compactes pour éviter la coupure dans le tableau
         return `
         <tr ${rowClass}>
             <td><span style="font-family:monospace;font-size:0.85rem">${order.orderId}</span></td>
@@ -509,9 +516,9 @@ function renderOrdersTable(orders) {
             <td>
                 <div class="reservation-actions">
                     <div class="reservation-actions-top">
-                        <button type="button" onclick="openReservationDetails(${order.id})" class="btn btn-secondary btn-small action-btn">📋 Détails</button>
-                        <button onclick="openPriceModal(${order.id})" class="btn btn-secondary btn-small action-btn">💰 Prix</button>
-                        <button onclick="openEditReservationModal(${order.id})" class="btn btn-secondary btn-small action-btn">✏️ Modifier</button>
+                        <button type="button" onclick="openReservationDetails(${order.id})" class="btn btn-secondary btn-small action-btn" title="Détails">📋</button>
+                        <button onclick="openPriceModal(${order.id})" class="btn btn-secondary btn-small action-btn" title="Prix">💰</button>
+                        <button onclick="openEditReservationModal(${order.id})" class="btn btn-secondary btn-small action-btn" title="Modifier">✏️</button>
                     </div>
                     <select onchange="updateStatus(${order.id}, this.value)" class="status-select action-select">
                         <option value="Nouveau"   ${order.status==='Nouveau'  ?'selected':''}>Nouveau</option>
@@ -519,7 +526,7 @@ function renderOrdersTable(orders) {
                         <option value="Terminé"   ${order.status==='Terminé'  ?'selected':''}>Terminé</option>
                         <option value="Annulé"    ${order.status==='Annulé'   ?'selected':''}>Annulé</option>
                     </select>
-                    <button onclick="deleteOrder(${order.id})" class="btn btn-danger btn-small action-btn">🗑️ Supprimer</button>
+                    <button onclick="deleteOrder(${order.id})" class="btn btn-danger btn-small action-btn" title="Supprimer">🗑️</button>
                 </div>
             </td>
         </tr>`;
@@ -613,7 +620,6 @@ async function updateStatistics() {
                 r.statut === 'Nouveau' || r.statut === 'En cours'
             ).length;
             
-            // Compte "clients fidèles" = téléphones ayant 2 réservations ou +
             const phoneCounts = new Map();
             reservations.forEach(r => {
                 const p = String(r.client_telephone || r.telephone || '').trim();
@@ -644,7 +650,8 @@ async function updateStatistics() {
 }
 
 function formatPrice(price) {
-    return new Intl.NumberFormat('fr-DZ', { style: 'decimal', minimumFractionDigits: 0 }).format(price) + ' DZD';
+    const n = Math.round(Number(price) || 0);
+    return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n) + ' DZD';
 }
 
 function showMessage(text, type, containerId = null) {
@@ -680,8 +687,6 @@ function escapeHtml(str) {
 }
 
 function buildImageSrc(cheminFichier, nomFichier) {
-    // Normalize windows paths and always return an URL like:
-    // http://localhost:5000/uploads/<file>
     let p = (cheminFichier || '').toString().replace(/\\/g, '/');
     p = p.replace(/^\/+/, '');
 
@@ -696,16 +701,13 @@ function buildImageSrc(cheminFichier, nomFichier) {
         return `${API_ORIGIN}/${p}`;
     }
 
-    // Fallback: if we only have filename
     if (!p && nomFichier) {
         return `${API_ORIGIN}/uploads/${nomFichier}`;
     }
 
-    // Last resort: return as-is
     return `${API_ORIGIN}/${p}`;
 }
 
-/** Modal complète : client, véhicule, services, prix, statut, message entier, photos */
 async function openReservationDetails(reservationId, options = {}) {
     const scrollToPhotos = !!options.scrollToPhotos;
     try {
@@ -814,87 +816,129 @@ function openPriceModal(reservationId) {
     if (!order) return;
 
     document.getElementById('priceReservationId').value = order.id;
-    document.getElementById('priceBaseInput').value = order.basePrice || 0;
-    document.getElementById('priceFinalInput').value = order.finalPrice || 0;
+    const servicesListEl = document.getElementById('priceServicesList');
+    const baseInput = document.getElementById('priceBaseInput');
+    const finalInput = document.getElementById('priceFinalInput');
+    const discountInput = document.getElementById('priceDiscountPercentInput');
     const delaiEl = document.getElementById('priceDelaiInput');
     if (delaiEl) delaiEl.value = order.delaiRemise || '';
 
-    // Remise auto -20 % : seulement clients marqués fidèles en BDD (pas une simple remise admin)
     const loyaltyRemise = !!order.isFidele;
     currentPriceHasRemise = loyaltyRemise;
     const indicator = document.getElementById('priceRemiseIndicator');
     if (indicator) indicator.textContent = loyaltyRemise ? 'Oui (fidélité -20 %)' : 'Non';
 
-    const finalInput = document.getElementById('priceFinalInput');
-    if (finalInput) {
-        finalInput.readOnly = currentPriceHasRemise;
+    const serviceNames = Array.isArray(order.services) && order.services.length ? order.services : ['Service'];
+    const perService = serviceNames.length > 0 ? Math.round((order.basePrice || 0) / serviceNames.length) : 0;
+    currentPriceServices = serviceNames.map((serviceName) => ({
+        name: serviceName,
+        price: Math.max(0, perService)
+    }));
+
+    if (servicesListEl) {
+        servicesListEl.innerHTML = currentPriceServices.map((svc, idx) => `
+            <div class="price-service-row">
+                <span class="price-service-name">${escapeHtml(svc.name)}</span>
+                <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    class="price-service-input"
+                    data-index="${idx}"
+                    value="${Math.max(0, Number(svc.price) || 0)}"
+                    placeholder="0"
+                />
+            </div>
+        `).join('');
     }
 
+    const persistedDiscountPercent = (order.basePrice || 0) > 0 && (order.remise || 0) > 0
+        ? ((order.remise / order.basePrice) * 100)
+        : 0;
+    const effectiveDiscountPercent = currentPriceHasRemise
+        ? 20
+        : persistedDiscountPercent;
+
+    if (discountInput) {
+        discountInput.value = effectiveDiscountPercent > 0 ? Number(effectiveDiscountPercent.toFixed(2)) : 0;
+        discountInput.readOnly = currentPriceHasRemise;
+    }
+    if (baseInput) {
+        baseInput.value = Math.max(0, Number(order.basePrice) || 0);
+    }
+    if (finalInput) {
+        finalInput.value = Math.max(0, Number(order.finalPrice) || 0);
+    }
+
+    recalculatePriceModalTotals();
     document.getElementById('priceModal').style.display = 'block';
 }
 
-// Recalcul live du prix final quand remise active
 document.addEventListener('DOMContentLoaded', () => {
     const baseInput = document.getElementById('priceBaseInput');
     const finalInput = document.getElementById('priceFinalInput');
-    if (baseInput && finalInput) {
-        baseInput.addEventListener('input', () => {
-            const base = parseFloat(baseInput.value || '0');
-            if (currentPriceHasRemise && !Number.isNaN(base)) {
-                finalInput.value = Math.round(base * 0.8);
-            }
+    const discountInput = document.getElementById('priceDiscountPercentInput');
+    const servicesList = document.getElementById('priceServicesList');
+
+    if (baseInput && finalInput && discountInput && servicesList) {
+        discountInput.addEventListener('input', recalculatePriceModalTotals);
+        servicesList.addEventListener('input', (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLInputElement)) return;
+            if (!target.classList.contains('price-service-input')) return;
+            const idx = Number(target.dataset.index);
+            if (Number.isNaN(idx) || !currentPriceServices[idx]) return;
+            currentPriceServices[idx].price = Math.max(0, parseFloat(target.value || '0') || 0);
+            recalculatePriceModalTotals();
         });
     }
 });
 
+function recalculatePriceModalTotals() {
+    const baseInput = document.getElementById('priceBaseInput');
+    const finalInput = document.getElementById('priceFinalInput');
+    const discountInput = document.getElementById('priceDiscountPercentInput');
+    if (!baseInput || !finalInput || !discountInput) return;
+
+    const base = currentPriceServices.reduce((sum, svc) => sum + (Math.max(0, Number(svc.price) || 0)), 0);
+    let discountPercent = Math.max(0, Number(discountInput.value) || 0);
+    if (currentPriceHasRemise) discountPercent = 20;
+    if (discountPercent > 100) discountPercent = 100;
+    discountInput.value = Number(discountPercent.toFixed(2));
+
+    const finalPrice = Math.round(base * (1 - (discountPercent / 100)));
+    baseInput.value = Math.round(base);
+    finalInput.value = Math.max(0, finalPrice);
+}
+
 async function submitPriceUpdate() {
     const id = document.getElementById('priceReservationId').value;
+    recalculatePriceModalTotals();
     const prix_base = parseFloat(document.getElementById('priceBaseInput').value || '0');
-    let prix_final = parseFloat(document.getElementById('priceFinalInput').value || '0');
+    const prix_final = parseFloat(document.getElementById('priceFinalInput').value || '0');
 
     if (!id) return;
     if (Number.isNaN(prix_base) || Number.isNaN(prix_final)) {
         alert('Prix invalide');
         return;
     }
-
-    // Si remise active (fidélité), on applique -20% (prix_final = prix_base * 0.8).
-    // Mais si l'admin n'a rempli que "prix final", on recalcule aussi le "prix base"
-    // pour éviter de sauvegarder 0 => "Prix à définir".
-    if (currentPriceHasRemise) {
-        const baseInput = document.getElementById('priceBaseInput');
-        const finalInput = document.getElementById('priceFinalInput');
-
-        if ((prix_base || 0) <= 0 && (prix_final || 0) > 0) {
-            const inferredBase = Math.round(prix_final / 0.8);
-            if (baseInput) baseInput.value = inferredBase;
-            // eslint-disable-next-line no-param-reassign
-            // (on remplace la valeur locale pour le calcul)
-            // eslint-disable-next-line prefer-const
-            const computedBase = inferredBase;
-            prix_final = Math.round(computedBase * 0.8);
-        } else {
-            prix_final = Math.round((prix_base || 0) * 0.8);
-        }
-
-        if (finalInput) finalInput.value = prix_final;
-    } else {
-        // Non-fidèle: si prix final est resté à 0 mais base est OK, on égalise
-        if ((prix_final || 0) <= 0 && (prix_base || 0) > 0) {
-            prix_final = prix_base;
-        }
-    }
-
-    // `remise` stockée comme montant (prix_base - prix_final)
-    const remise = (prix_base || 0) > (prix_final || 0) ? ((prix_base || 0) - (prix_final || 0)) : 0;
-
+    const remise = Math.max(0, (prix_base || 0) - (prix_final || 0));
     const delaiRemise = (document.getElementById('priceDelaiInput')?.value || '').trim();
 
     try {
         const res = await fetch(`${API_URL}/reservations/${id}/price`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prix_base, prix_final, remise, delai_remise: delaiRemise || null })
+            body: JSON.stringify({
+                prix_base,
+                prix_final,
+                remise,
+                delai_remise: delaiRemise || null,
+                services_pricing: currentPriceServices.map((svc) => ({
+                    name: String(svc.name || '').trim(),
+                    price: Math.max(0, Number(svc.price) || 0)
+                }))
+            })
         });
         const result = await res.json();
         if (!result.success) {
@@ -945,14 +989,7 @@ async function submitEditReservation() {
         const res = await fetch(`${API_URL}/reservations/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                name,
-                phone,
-                email: email || null,
-                model,
-                year,
-                message
-            })
+            body: JSON.stringify({ name, phone, email: email || null, model, year, message })
         });
         const result = await res.json();
         if (!result.success) {
@@ -977,8 +1014,6 @@ function openAddReservationModal() {
     document.getElementById('addYearInput').value = '';
     document.getElementById('addMessageInput').value = '';
     document.querySelectorAll('#addModal .service-checkbox').forEach(cb => { cb.checked = false; });
-    const photosInput = document.getElementById('addPhotosInput');
-    if (photosInput) photosInput.value = '';
     document.getElementById('addModal').style.display = 'block';
 }
 
@@ -989,8 +1024,6 @@ async function submitAddReservation() {
     const model = document.getElementById('addModelInput').value.trim();
     const year = document.getElementById('addYearInput').value;
     const message = document.getElementById('addMessageInput').value.trim();
-    const photosInput = document.getElementById('addPhotosInput');
-    const files = photosInput?.files ? Array.from(photosInput.files) : [];
 
     if (!name || !phone) {
         alert('Nom et téléphone obligatoires');
@@ -1004,27 +1037,17 @@ async function submitAddReservation() {
     formData.append('model', model);
     formData.append('year', year);
     formData.append('message', message);
-    // Récupère les services sélectionnés (la table de BDD a besoin d'une liste)
     const selectedServices = Array.from(
         document.querySelectorAll('#addModal .service-checkbox:checked')
     ).map(cb => ({
         value: cb.dataset.code || cb.value,
         name: cb.dataset.name || cb.value || '',
-        price: 0 // Prix services: sera géré plus tard côté admin si besoin
+        price: 0
     }));
     formData.append('services', JSON.stringify(selectedServices));
     formData.append('basePrice', 0);
     formData.append('discount', 0);
     formData.append('finalPrice', 0);
-
-    if (files.length > 5) {
-        alert('Maximum 5 photos');
-        return;
-    }
-
-    for (const file of files) {
-        formData.append('images', file);
-    }
 
     try {
         const res = await fetch(`${API_URL}/reservations`, {
@@ -1112,7 +1135,7 @@ async function rejectUser(userId) {
 }
 
 // ============================================
-// ✅ MESSAGERIE ADMIN - COMPLET
+// MESSAGERIE ADMIN
 // ============================================
 function initAdminMessaging() {
     if (typeof io === 'undefined') return;
@@ -1167,7 +1190,8 @@ async function loadAdminConversations() {
         const result = await res.json();
         if (result.success) {
             adminConversations = result.data || [];
-            displayAdminConversations(adminConversations);
+            // [MOD 4] Appliquer le filtre de recherche si actif
+            renderAdminConversationsList(adminConversations);
             const totalUnread = adminConversations.reduce((sum, c) => sum + (parseInt(c.unread_from_client) || 0), 0);
             const badge = document.getElementById('messagesUnreadBadge');
             if (badge) badge.textContent = totalUnread;
@@ -1175,7 +1199,27 @@ async function loadAdminConversations() {
     } catch (error) { console.error('❌ Erreur conversations:', error); }
 }
 
+// [MOD 4] Filtre de recherche dans les conversations
+function filterAdminConversations() {
+    const q = adminConvSearchQuery.toLowerCase().trim();
+    if (!q) {
+        renderAdminConversationsList(adminConversations);
+        return;
+    }
+    const filtered = adminConversations.filter(conv =>
+        (conv.client_name  || '').toLowerCase().includes(q) ||
+        (conv.telephone    || '').toLowerCase().includes(q) ||
+        (conv.last_message || '').toLowerCase().includes(q)
+    );
+    renderAdminConversationsList(filtered);
+}
+
+// [MOD 4] Renommage de l'ancienne displayAdminConversations pour séparer data/rendu
 function displayAdminConversations(conversations) {
+    renderAdminConversationsList(conversations);
+}
+
+function renderAdminConversationsList(conversations) {
     const list = document.getElementById('adminConversationsList');
     if (!list) return;
     if (!conversations.length) {
@@ -1232,6 +1276,7 @@ function renderAdminMessages(messages) {
     scrollAdminChatToBottom();
 }
 
+// [MOD 1] displayAdminMessage — suppression du bouton 🗑️ inline ; clic droit uniquement
 function displayAdminMessage(msg, containerOverride = null) {
     const container = containerOverride || document.getElementById('adminChatMessages');
     if (!container) return;
@@ -1239,6 +1284,8 @@ function displayAdminMessage(msg, containerOverride = null) {
     const row = document.createElement('div');
     row.className = 'admin-chat-row ' + (isMe ? 'me' : 'other');
     row.dataset.messageId = msg.id;
+
+    // [MOD 1] Clic droit sur TOUTE la bulle pour supprimer (plus de bouton inline)
     row.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         showAdminMessageContextMenu(e, msg.id);
@@ -1285,15 +1332,8 @@ function displayAdminMessage(msg, containerOverride = null) {
         }
     }
 
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'admin-chat-msg-del';
-    delBtn.title = 'Supprimer ce message';
-    delBtn.textContent = '🗑️';
-    delBtn.addEventListener('click', () => deleteAdminMessage(msg.id));
-
+    // [MOD 1] Pas de bouton 🗑️ ajouté ici — clic droit uniquement
     inner.appendChild(bubble);
-    inner.appendChild(delBtn);
     row.appendChild(inner);
 
     const meta = document.createElement('div');
@@ -1378,7 +1418,6 @@ function handleAdminChatKeyPress(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminChatText(e); }
 }
 
-// ✅ ENVOI MESSAGE TEXTE
 async function sendAdminChatText(event) {
     if (event) event.preventDefault();
     if (!currentAdminConversationId) return;
@@ -1402,7 +1441,6 @@ async function sendAdminChatText(event) {
     } catch (error) { console.error('❌ Erreur:', error); }
 }
 
-// ✅ ENVOI IMAGE
 async function sendAdminChatImage(inputEl) {
     const file = inputEl.files?.[0];
     if (!file || !currentAdminConversationId) return;
@@ -1424,7 +1462,7 @@ async function sendAdminChatImage(inputEl) {
 }
 
 // ============================================
-// ✅ ENREGISTREMENT AUDIO ADMIN
+// ENREGISTREMENT AUDIO ADMIN
 // ============================================
 function initAdminAudioRecording() {
     const recordBtn = document.getElementById('adminRecordAudioBtn');

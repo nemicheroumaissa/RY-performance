@@ -253,7 +253,7 @@
         }
 
         tr:hover {
-            background: rgba(155, 89, 182, 0.1);
+            background: rgba(155, 89, 182, 0.1); 
         }
 
 table td {
@@ -956,7 +956,7 @@ table td {
 }
 
 .admin-chat-message {
-    max-width: 82%;
+    max-width: 92%;
     padding: 0.6rem 0.8rem;
     border-radius: 14px;
     font-size: 0.9rem;
@@ -964,6 +964,9 @@ table td {
     display: inline-block;
     min-width: 0;
     box-sizing: border-box;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .admin-msg-media-wrap {
@@ -992,6 +995,8 @@ table td {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    width: 100%;
+    max-width: 100%;
 }
 
 .admin-chat-row.me {
@@ -1001,10 +1006,12 @@ table td {
 .admin-chat-message.me {
     background: var(--primary-color);
     align-self: flex-end;
+    word-break: normal;
 }
 
 .admin-chat-message.other {
     background: #1f1f1f;
+    word-break: normal;
 }
 
 .admin-chat-meta {
@@ -1016,8 +1023,19 @@ table td {
     margin-top: 0.15rem;
 }
 
+.admin-chat-row.me .admin-chat-meta {
+    align-self: flex-end;
+    padding-right: 0.25rem;
+}
+
+.admin-chat-row.other .admin-chat-meta {
+    align-self: flex-start;
+    padding-left: 0.25rem;
+}
+
 .msg-status {
     font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .msg-status-sent {
@@ -1103,4 +1121,217 @@ table td {
         0 0 0 1px rgba(255, 255, 255, 0.07),
         0 4px 28px rgba(255, 255, 255, 0.1),
         0 0 36px rgba(255, 255, 255, 0.06);
+}
+/* ============================================
+   MODIFICATIONS CIBLÉES — À AJOUTER À LA FIN DE admin.css
+   ============================================ */
+
+/* -----------------------------------------------
+   MOD 5 : Statuts messages — couleurs uniformisées
+   admin + client : gris foncé pour sent/delivered, mauve pour read
+   ----------------------------------------------- */
+.msg-status-sent {
+    color: #6b7280 !important;   /* gris foncé */
+    font-size: 0.72rem;
+}
+.msg-status-delivered {
+    color: #6b7280 !important;   /* gris foncé */
+    font-size: 0.72rem;
+}
+.msg-status-read {
+    color: var(--primary-color) !important;  /* mauve */
+    font-weight: 600;
+    font-size: 0.72rem;
+}
+/* Idem dans la zone admin-chat-meta */
+.admin-chat-meta .msg-status-sent     { color: #6b7280 !important; }
+.admin-chat-meta .msg-status-delivered{ color: #6b7280 !important; }
+.admin-chat-meta .msg-status-read     { color: var(--primary-color) !important; font-weight: 600; }
+
+/* -----------------------------------------------
+   MOD 7 : Boutons du tableau — ne plus être coupés
+   Actions compactes avec icônes uniquement (tooltip via title)
+   ----------------------------------------------- */
+.reservation-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-width: 110px;
+    width: 110px;
+}
+
+.reservation-actions-top {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: nowrap;
+}
+
+/* Boutons icône uniquement : carré compact */
+.reservation-actions .action-btn.btn-small {
+    padding: 0.35rem 0.45rem;
+    font-size: 1rem;
+    line-height: 1;
+    border-width: 1px;
+    border-radius: 6px;
+    min-width: 32px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Select statut pleine largeur */
+.action-select {
+    width: 100%;
+    padding: 0.32rem 0.4rem;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #101010;
+    color: #fff;
+    font-size: 0.75rem;
+    transition: all 0.2s ease;
+}
+
+/* -----------------------------------------------
+   MOD 4 : Barre de recherche dans les conversations admin
+   ----------------------------------------------- */
+.admin-conv-search {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #2a2a2a;
+    background: #111;
+}
+
+.admin-conv-search input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: #000;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+.admin-conv-search input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(155, 89, 182, 0.15);
+}
+
+.admin-conv-search input::placeholder {
+    color: #555;
+}
+
+/* -----------------------------------------------
+   MOD 3 : Modal Ajouter — services stylisés
+   ----------------------------------------------- */
+.services-checkbox-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 0.75rem;
+}
+
+.service-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-color);
+    font-size: 0.83rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid rgba(155, 89, 182, 0.3);
+    border-radius: 8px;
+    background: rgba(155, 89, 182, 0.06);
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+}
+
+.service-checkbox-label:hover {
+    border-color: var(--primary-color);
+    background: rgba(155, 89, 182, 0.14);
+}
+
+.service-checkbox-label input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+/* Ligne séparatrice légère entre sections du modal Ajouter */
+.add-modal-section-divider {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    margin: 1rem 0;
+}
+
+.price-services-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.price-service-row {
+    display: grid;
+    grid-template-columns: 1fr 140px;
+    gap: 0.65rem;
+    align-items: center;
+}
+
+.price-service-name {
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.price-service-input {
+    width: 100%;
+    padding: 0.55rem 0.7rem;
+    background: var(--bg-color);
+    border: 1px solid #3b3b3b;
+    border-radius: 8px;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+#priceModal .modal-content {
+    max-width: 640px;
+}
+
+.price-modal-note {
+    background: rgba(155, 89, 182, 0.12);
+    border: 1px solid rgba(155, 89, 182, 0.25);
+    border-radius: 10px;
+    padding: 0.65rem 0.8rem;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.price-modal-section-title {
+    color: var(--primary-color);
+    margin: 1.1rem 0 0.55rem;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.admin-chat-message {
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    word-wrap: break-word !important;
+    display: block !important;      /* ← était inline-block, c'est le vrai bug */
+    max-width: 72% !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+
+/* La bulle ne doit pas dépasser son conteneur */
+.admin-chat-row-inner {
+    max-width: 75%;
+    min-width: 0;
+    display: flex;
+    align-items: flex-start;
+}
+
+.admin-chat-row.me .admin-chat-row-inner {
+    align-self: flex-end;
 }
