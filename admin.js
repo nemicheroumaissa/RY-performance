@@ -3,14 +3,11 @@
 // Login OK + Stats + Badge + Chat fonctionnel
 // ============================================
 
-function resolveApiOrigin() {
+ffunction resolveApiOrigin() {
     if (typeof window !== 'undefined' && window.API_BASE) {
         return String(window.API_BASE).replace(/\/+$/, '');
     }
-    if (typeof window === 'undefined') return 'http://localhost:5000';
-    const h = window.location.hostname;
-    if (!h) return 'http://localhost:5000';
-    return `http://${h}:5000`;
+    return 'https://ry-performance.onrender.com';
 }
 
 const API_ORIGIN = resolveApiOrigin();
