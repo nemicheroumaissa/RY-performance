@@ -1,18 +1,7 @@
 const db = require('../config/database');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
-
-// ============================================
-// CONFIGURATION EMAIL
-// ============================================
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASSWORD
-    }
-});
+const mailer = require('../utils/mailer');
 
 function getAdminPanelUrl(req) {
     const fromAdminPanel = String(process.env.ADMIN_PANEL_URL || '').trim();
@@ -32,20 +21,16 @@ function getAdminPanelUrl(req) {
 async function createDefaultAdmin() {
     try {
         const [admins] = await db.query(
-            'SELECT id FROM users WHERE username = ?',
-            ['admin']
+            'SELECT id FROM users WHERE username = ?', ['admin']
         );
-
         if (admins.length === 0) {
             const hashedPassword = await bcrypt.hash('admin123', 10);
             await db.query(
                 `INSERT INTO users (nom_complet, email, username, password, role, statut, date_approbation) 
                  VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-                ['Administrateur', process.env.ADMIN_EMAIL, 'admin', hashedPassword, 'admin', 'approuve']
+                ['Administrateur', process.env.ADMIN_EMAIL, 'admin', hashedPassword, 'admin_principal', 'approuve']
             );
-            console.log('✅ Admin par défaut créé:');
-            console.log('   Username: admin');
-            console.log('   Password: admin123');
+            console.log('✅ Admin par défaut créé');
         } else {
             console.log('ℹ️  Compte admin déjà existant');
         }
@@ -54,7 +39,6 @@ async function createDefaultAdmin() {
     }
 }
 
-// Créer l'admin au démarrage
 createDefaultAdmin();
 
 // ============================================
@@ -62,13 +46,10 @@ createDefaultAdmin();
 // ============================================
 exports.signup = async (req, res) => {
     const connection = await db.getConnection();
-    
     try {
         await connection.beginTransaction();
-        
         const { nom_complet, email, telephone, username, password, message_demande } = req.body;
 
-        // Validation
         if (!nom_complet || !email || !username || !password) {
             return res.status(400).json({
                 success: false,
@@ -76,7 +57,6 @@ exports.signup = async (req, res) => {
             });
         }
 
-        // Vérifier si l'utilisateur existe déjà
         const [existingUsers] = await connection.query(
             'SELECT id FROM users WHERE email = ? OR username = ?',
             [email, username]
@@ -89,33 +69,25 @@ exports.signup = async (req, res) => {
             });
         }
 
-        // Hasher le mot de passe
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Créer l'utilisateur
-        const [userResult] = await connection.query(
-            `INSERT INTO users (nom_complet, email, telephone, username, password, role, statut) 
-             VALUES (?, ?, ?, ?, ?, 'employee', 'en_attente')`,
-            [nom_complet, email, telephone || null, username, hashedPassword]
-        );
-
-        const userId = userResult.insertId;
-
-        // Créer la demande d'inscription
         await connection.query(
-            'INSERT INTO demandes_inscription (user_id, message_demande) VALUES (?, ?)',
-            [userId, message_demande || null]
+            `INSERT INTO users 
+             (nom_complet, email, telephone, username, password, role, statut, message_demande) 
+             VALUES (?, ?, ?, ?, ?, 'admin_secondaire', 'en_attente', ?)`,
+            [nom_complet, email, telephone || null, username, hashedPassword, message_demande || null]
         );
 
         await connection.commit();
 
-        // Envoyer un email à l'admin
         try {
             const adminUrl = getAdminPanelUrl(req);
-            
-            const mailOptions = {
-                from: process.env.EMAIL_FROM,
-                to: process.env.ADMIN_EMAIL,
+            const adminTo = mailer.getAdminNotificationEmail();
+            if (!adminTo) {
+                console.warn('⚠️  Demande d’accès enregistrée mais aucun destinataire admin (ADMIN_EMAIL / EMAIL_USER).');
+            } else {
+            await mailer.sendMail({
+                to: adminTo,
                 subject: '🔔 Nouvelle demande d\'inscription - RY Performance Admin',
                 html: `
                     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -135,22 +107,19 @@ exports.signup = async (req, res) => {
                                 📋 Gérer les demandes
                             </a>
                         </div>
-                        <p style="color: #888; font-size: 12px; margin-top: 20px;">
-                            RY Performance — Système d'administration
-                        </p>
+                        <p style="color: #888; font-size: 12px;">RY Performance — Système d'administration</p>
                     </div>
                 `
-            };
-
-            await transporter.sendMail(mailOptions);
+            });
             console.log('✅ Email envoyé à l\'admin');
+            }
         } catch (emailError) {
-            console.error('❌ Erreur envoi email:', emailError);
+            console.error('❌ Erreur envoi email (demande d\'accès):', emailError.message || emailError);
         }
 
         res.status(201).json({
             success: true,
-            message: 'Demande d\'inscription envoyée ! Vous recevrez une réponse par email une fois votre compte approuvé par l\'administrateur.'
+            message: 'Demande d\'inscription envoyée ! Vous recevrez une réponse par email une fois votre compte approuvé.'
         });
 
     } catch (error) {
@@ -172,7 +141,6 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { username, password } = req.body;
-
         console.log('🔐 Tentative de connexion:', username);
 
         if (!username || !password) {
@@ -182,7 +150,6 @@ exports.login = async (req, res) => {
             });
         }
 
-        // Récupérer l'utilisateur
         const [users] = await db.query(
             'SELECT * FROM users WHERE username = ? OR email = ?',
             [username, username]
@@ -191,7 +158,6 @@ exports.login = async (req, res) => {
         console.log('👤 Utilisateurs trouvés:', users.length);
 
         if (users.length === 0) {
-            console.log('❌ Aucun utilisateur trouvé');
             return res.status(401).json({
                 success: false,
                 message: 'Nom d\'utilisateur ou mot de passe incorrect'
@@ -203,9 +169,7 @@ exports.login = async (req, res) => {
         console.log('📝 User statut:', user.statut);
         console.log('📝 User role:', user.role);
 
-        // Vérifier le statut
         if (user.statut === 'en_attente') {
-            console.log('⏳ Compte en attente');
             return res.status(403).json({
                 success: false,
                 message: 'Votre compte est en attente d\'approbation par l\'administrateur'
@@ -213,69 +177,35 @@ exports.login = async (req, res) => {
         }
 
         if (user.statut === 'refuse') {
-            console.log('❌ Compte refusé');
             return res.status(403).json({
                 success: false,
-                message: 'Votre demande d\'inscription a été refusée'
+                message: `Votre demande d'inscription a été refusée${user.raison_refus ? ' : ' + user.raison_refus : ''}`
             });
         }
 
         if (user.statut === 'suspendu') {
-            console.log('🚫 Compte suspendu');
             return res.status(403).json({
                 success: false,
                 message: 'Votre compte a été suspendu. Contactez l\'administrateur.'
             });
         }
 
-        // Vérifier le mot de passe
         console.log('🔑 Vérification du mot de passe...');
         const isPasswordValid = await bcrypt.compare(password, user.password);
         console.log('✅ Mot de passe valide:', isPasswordValid);
 
         if (!isPasswordValid) {
-            try {
-                await db.query(
-                    'INSERT INTO logs_connexion (user_id, action, ip_address) VALUES (?, ?, ?)',
-                    [user.id, 'tentative_echec', req.ip]
-                );
-            } catch (logError) {
-                console.error('Erreur log:', logError);
-            }
-
-            console.log('❌ Mot de passe incorrect');
             return res.status(401).json({
                 success: false,
                 message: 'Nom d\'utilisateur ou mot de passe incorrect'
             });
         }
 
-        // Générer le token JWT
         const token = jwt.sign(
-            { 
-                id: user.id, 
-                username: user.username, 
-                role: user.role 
-            },
+            { id: user.id, username: user.username, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
-
-        // Mettre à jour la dernière connexion
-        await db.query(
-            'UPDATE users SET derniere_connexion = NOW() WHERE id = ?',
-            [user.id]
-        );
-
-        // Logger la connexion
-        try {
-            await db.query(
-                'INSERT INTO logs_connexion (user_id, action, ip_address) VALUES (?, ?, ?)',
-                [user.id, 'connexion', req.ip]
-            );
-        } catch (logError) {
-            console.error('Erreur log:', logError);
-        }
 
         console.log('✅ Connexion réussie pour:', user.username);
 
@@ -307,7 +237,16 @@ exports.login = async (req, res) => {
 // ============================================
 exports.getPendingRequests = async (req, res) => {
     try {
-        const [requests] = await db.query('SELECT * FROM vue_demandes_attente');
+        const [requests] = await db.query(
+            `SELECT 
+                id, nom_complet, email, telephone, username,
+                message_demande, statut,
+                DATE_FORMAT(date_inscription, '%Y-%m-%dT%H:%i:%s') AS date_inscription,
+                date_traitement, raison_refus
+             FROM users 
+             WHERE statut = 'en_attente' AND role = 'admin_secondaire'
+             ORDER BY date_inscription DESC`
+        );
 
         res.status(200).json({
             success: true,
@@ -329,51 +268,35 @@ exports.getPendingRequests = async (req, res) => {
 // ============================================
 exports.approveUser = async (req, res) => {
     const connection = await db.getConnection();
-    
     try {
         await connection.beginTransaction();
-        
         const { userId } = req.params;
-        const adminId = req.user.id;
 
-        // Mettre à jour l'utilisateur
         await connection.query(
             `UPDATE users 
-             SET statut = 'approuve', date_approbation = NOW(), approuve_par = ? 
+             SET statut = 'approuve', 
+                 date_approbation = NOW(), 
+                 date_traitement = NOW()
              WHERE id = ?`,
-            [adminId, userId]
-        );
-
-        // Mettre à jour la demande
-        await connection.query(
-            `UPDATE demandes_inscription 
-             SET statut = 'approuve', date_traitement = NOW(), traite_par = ? 
-             WHERE user_id = ? AND statut = 'en_attente'`,
-            [adminId, userId]
-        );
-
-        // Récupérer les infos de l'utilisateur
-        const [users] = await connection.query(
-            'SELECT nom_complet, email FROM users WHERE id = ?',
             [userId]
+        );
+
+        const [users] = await connection.query(
+            'SELECT nom_complet, email FROM users WHERE id = ?', [userId]
         );
 
         await connection.commit();
 
-        // Envoyer un email à l'utilisateur
         if (users.length > 0) {
             try {
                 const adminUrl = getAdminPanelUrl(req);
-                
-                const mailOptions = {
-                    from: process.env.EMAIL_FROM,
+                await mailer.sendMail({
                     to: users[0].email,
                     subject: '✅ Votre compte RY Performance a été approuvé !',
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                             <h2 style="color: #2ecc71;">Félicitations ${users[0].nom_complet} !</h2>
                             <p>Votre compte RY Performance Admin a été approuvé par l'administrateur.</p>
-                            <p>Vous pouvez maintenant vous connecter et accéder au panel d'administration.</p>
                             <div style="text-align: center; margin: 30px 0;">
                                 <a href="${adminUrl}" 
                                    style="background: #2ecc71; color: white; padding: 15px 30px; 
@@ -382,24 +305,17 @@ exports.approveUser = async (req, res) => {
                                     🚀 Se connecter au panel admin
                                 </a>
                             </div>
-                            <p style="color: #888; font-size: 12px; margin-top: 20px;">
-                                RY Performance — Système d'administration
-                            </p>
+                            <p style="color: #888; font-size: 12px;">RY Performance — Système d'administration</p>
                         </div>
                     `
-                };
-
-                await transporter.sendMail(mailOptions);
+                });
                 console.log('✅ Email d\'approbation envoyé');
             } catch (emailError) {
-                console.error('❌ Erreur envoi email:', emailError);
+                console.error('❌ Erreur envoi email (approbation):', emailError.message || emailError);
             }
         }
 
-        res.status(200).json({
-            success: true,
-            message: 'Utilisateur approuvé avec succès'
-        });
+        res.status(200).json({ success: true, message: 'Utilisateur approuvé avec succès' });
 
     } catch (error) {
         await connection.rollback();
@@ -419,70 +335,51 @@ exports.approveUser = async (req, res) => {
 // ============================================
 exports.rejectUser = async (req, res) => {
     const connection = await db.getConnection();
-    
     try {
         await connection.beginTransaction();
-        
         const { userId } = req.params;
         const { raison } = req.body;
-        const adminId = req.user.id;
 
-        // Mettre à jour l'utilisateur
         await connection.query(
-            'UPDATE users SET statut = \'refuse\' WHERE id = ?',
-            [userId]
+            `UPDATE users 
+             SET statut = 'refuse',
+                 date_traitement = NOW(),
+                 raison_refus = ?
+             WHERE id = ?`,
+            [raison || null, userId]
         );
 
-        // Mettre à jour la demande
-        await connection.query(
-            `UPDATE demandes_inscription 
-             SET statut = 'refuse', date_traitement = NOW(), traite_par = ?, raison_refus = ? 
-             WHERE user_id = ? AND statut = 'en_attente'`,
-            [adminId, raison || null, userId]
-        );
-
-        // Récupérer les infos de l'utilisateur
         const [users] = await connection.query(
-            'SELECT nom_complet, email FROM users WHERE id = ?',
-            [userId]
+            'SELECT nom_complet, email FROM users WHERE id = ?', [userId]
         );
 
         await connection.commit();
 
-        // Envoyer un email à l'utilisateur
         if (users.length > 0) {
             try {
-                const mailOptions = {
-                    from: process.env.EMAIL_FROM,
+                await mailer.sendMail({
                     to: users[0].email,
                     subject: '❌ Votre demande d\'inscription a été refusée',
                     html: `
                         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                             <h2 style="color: #e74c3c;">Demande refusée</h2>
                             <p>Bonjour ${users[0].nom_complet},</p>
-                            <p>Malheureusement, votre demande d'accès au panel d'administration RY Performance a été refusée.</p>
+                            <p>Malheureusement, votre demande d'accès au panel a été refusée.</p>
                             ${raison ? `<div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0;">
                                 <strong>Raison:</strong> ${raison}
                             </div>` : ''}
                             <p>Pour plus d'informations, contactez l'administrateur à ${process.env.ADMIN_EMAIL}.</p>
-                            <p style="color: #888; font-size: 12px; margin-top: 20px;">
-                                RY Performance — Système d'administration
-                            </p>
+                            <p style="color: #888; font-size: 12px;">RY Performance — Système d'administration</p>
                         </div>
                     `
-                };
-
-                await transporter.sendMail(mailOptions);
+                });
                 console.log('✅ Email de refus envoyé');
             } catch (emailError) {
-                console.error('❌ Erreur envoi email:', emailError);
+                console.error('❌ Erreur envoi email (refus):', emailError.message || emailError);
             }
         }
 
-        res.status(200).json({
-            success: true,
-            message: 'Utilisateur refusé'
-        });
+        res.status(200).json({ success: true, message: 'Utilisateur refusé' });
 
     } catch (error) {
         await connection.rollback();
@@ -505,10 +402,7 @@ exports.verifyToken = async (req, res) => {
         const token = req.headers.authorization?.split(' ')[1];
 
         if (!token) {
-            return res.status(401).json({
-                success: false,
-                message: 'Token manquant'
-            });
+            return res.status(401).json({ success: false, message: 'Token manquant' });
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -519,16 +413,10 @@ exports.verifyToken = async (req, res) => {
         );
 
         if (users.length === 0 || users[0].statut !== 'approuve') {
-            return res.status(401).json({
-                success: false,
-                message: 'Token invalide'
-            });
+            return res.status(401).json({ success: false, message: 'Token invalide' });
         }
 
-        res.status(200).json({
-            success: true,
-            user: users[0]
-        });
+        res.status(200).json({ success: true, user: users[0] });
 
     } catch (error) {
         res.status(401).json({

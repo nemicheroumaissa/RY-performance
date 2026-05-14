@@ -411,11 +411,17 @@ async function handleBookingSubmit(e) {
     }
 
     const totalBase          = selectedServicesData.reduce((sum, s) => sum + (s.price || 0), 0);
-    const isReturningCustomer = await checkReturningCustomer(phone);
-    const discount           = isReturningCustomer ? 20 : 0;
-    const finalPrice         = isReturningCustomer ? Math.round(totalBase * 0.80) : totalBase;
+    const discountInfo       = await checkReturningCustomer(phone);
+    const discountPercent    = Math.max(0, Math.min(20, Number(discountInfo?.discountPercent) || 0));
+    const finalPrice         = discountPercent > 0 ? Math.round(totalBase * (1 - discountPercent / 100)) : totalBase;
 
-    currentBookingData = { name, phone, email, model, year, message, services: selectedServicesData, totalBase, discount, finalPrice, isReturningCustomer };
+    currentBookingData = {
+        name, phone, email, model, year, message,
+        services: selectedServicesData,
+        totalBase,
+        discountPercent,
+        finalPrice
+    };
     showPriceConfirmation();
 }
 
@@ -441,10 +447,12 @@ function clearFormErrors() {
 
 async function checkReturningCustomer(phone) {
     try {
-        const res    = await fetch(API_URL + '/reservations/check-customer/' + phone);
+        const res    = await fetch(API_URL + '/reservations/check-customer/' + encodeURIComponent(phone));
         const result = await res.json();
-        return result.isReturningCustomer || result.isFidele || false;
-    } catch { return false; }
+        return result || {};
+    } catch {
+        return {};
+    }
 }
 
 function showPriceConfirmation() {
@@ -457,8 +465,8 @@ function showPriceConfirmation() {
         .map(s => `<div class="service-item"><span class="service-name">${s.name}</span></div>`)
         .join('');
 
-    const discountBadge = data.isReturningCustomer
-        ? '<div class="discount-badge">Remise appliquée (montant défini par l\'administrateur)</div>'
+    const discountBadge = (Number(data.discountPercent) || 0) > 0
+        ? `<div class="discount-badge">Remise automatique : -${Number(data.discountPercent).toFixed(0)}%</div>`
         : '';
 
     priceDetails.innerHTML = `
@@ -490,9 +498,12 @@ async function confirmBooking() {
         formData.append('year',     data.year);
         formData.append('message',  data.message);
         formData.append('services', JSON.stringify(data.services));
-        formData.append('basePrice',  0);
-        formData.append('discount',   data.discount);
-        formData.append('finalPrice', 0);
+        formData.append('basePrice',  String(Math.round(Number(data.totalBase) || 0)));
+        formData.append(
+            'discount',
+            String(Math.max(0, Math.round(Number(data.totalBase) || 0) - Math.round(Number(data.finalPrice) || 0)))
+        );
+        formData.append('finalPrice', String(Math.round(Number(data.finalPrice) || 0)));
 
         const response = await fetch(API_URL + '/reservations', { method: 'POST', body: formData });
         const result   = await response.json();

@@ -83,6 +83,7 @@ router.get('/stats/dashboard', reservationController.getStatistics);
 router.get('/check-customer/:phone', reservationController.checkReturningCustomer);
 
 router.get('/', reservationController.getAllReservations);
+router.get('/:id/loyalty-discount', reservationController.getLoyaltyDiscountByReservationId);
 router.get('/:id', reservationController.getReservationById);
 router.put('/:id', reservationController.updateReservation);
 router.put('/:id/status', reservationController.updateReservationStatus);

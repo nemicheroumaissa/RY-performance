@@ -1,5 +1,5 @@
 const db = require('../config/database');
-const nodemailer = require('nodemailer');
+const mailer = require('../utils/mailer');
 const { buildQuotePdfBuffer } = require('../utils/quotePdf');
 
 function formatDzdValue(value) {
@@ -19,6 +19,90 @@ async function ensureDelaiRemiseColumn() {
     delaiRemiseColumnEnsured = true;
 }
 
+let clientReservationCounterEnsured = false;
+
+async function ensureClientReservationCounter() {
+    if (clientReservationCounterEnsured) return;
+    try {
+        await db.query('ALTER TABLE clients ADD COLUMN reservation_count INT NOT NULL DEFAULT 0');
+    } catch (e) {
+        if (e.errno !== 1060) console.warn('ensureClientReservationCounter:', e.message);
+    }
+    clientReservationCounterEnsured = true;
+}
+
+// Règle fidélité (nombre d’autres réservations du client, hors « Annulé ») :
+//   0 autre résa  → 0%   (1ère réservation)
+//   1 autre résa  → 5%   (2e réservation)
+//   2 autres résas → 10% (3e réservation)
+//   3+ autres résas → 20% (4e et suivantes)
+function computeDiscountPercentFromCount(priorNonCancelledCount) {
+    const count = Math.max(0, Number(priorNonCancelledCount) || 0);
+    if (count === 0) return 0;
+    if (count === 1) return 5;
+    if (count === 2) return 10;
+    return 20;
+}
+
+function buildPhoneLookupVariants(raw) {
+    const t = String(raw || '').trim();
+    if (!t) return [];
+    const variants = new Set([t, t.replace(/\s+/g, '')]);
+    const digits = t.replace(/\D/g, '');
+    if (digits.length >= 8) {
+        variants.add(digits);
+        const last9 = digits.slice(-9);
+        variants.add(last9);
+        variants.add('0' + last9);
+        variants.add('213' + last9);
+        variants.add('+213' + last9);
+        if (digits.startsWith('213') && digits.length > 3) {
+            variants.add('0' + digits.slice(3));
+            variants.add(digits.slice(3));
+        }
+    }
+    return [...variants].filter(Boolean);
+}
+
+/** Résout client_id même si le téléphone diffère légèrement (espaces, +213, etc.) */
+async function resolveClientIdByPhone(dbConn, phoneParam) {
+    let raw = String(phoneParam ?? '').trim();
+    try {
+        raw = decodeURIComponent(raw);
+    } catch {
+        /* garde raw */
+    }
+    raw = raw.trim();
+    const variants = buildPhoneLookupVariants(raw);
+    if (variants.length === 0) return null;
+    const [rows] = await dbConn.query('SELECT id FROM clients WHERE telephone IN (?) LIMIT 1', [variants]);
+    if (rows?.length) return rows[0].id;
+    const want = raw.replace(/\D/g, '');
+    const tail = want.length >= 9 ? want.slice(-9) : want;
+    if (tail.length < 8) return null;
+    const [all] = await dbConn.query('SELECT id, telephone FROM clients WHERE telephone IS NOT NULL AND telephone != \'\'');
+    for (const row of all || []) {
+        const d = String(row.telephone || '').replace(/\D/g, '');
+        if (!d) continue;
+        if (d === want || d.slice(-9) === tail || want.endsWith(d.slice(-9))) return row.id;
+    }
+    return null;
+}
+
+async function countPriorNonCancelledReservations(dbConn, clientId, excludeReservationId) {
+    if (!clientId) return 0;
+    const ex = Number(excludeReservationId);
+    const useEx = Number.isFinite(ex) && ex > 0;
+    const [cntRows] = await dbConn.query(
+        `SELECT COUNT(*) AS c FROM reservations r
+         WHERE r.client_id = ?
+           AND r.statut <> 'Annulé'
+           AND (? = 0 OR r.id <> ?)`,
+        [clientId, useEx ? 1 : 0, useEx ? ex : 0]
+    );
+    return Number(cntRows?.[0]?.c) || 0;
+}
+
 // ============================================
 // CRÉER UNE NOUVELLE RÉSERVATION
 // ============================================
@@ -26,6 +110,7 @@ exports.createReservation = async (req, res) => {
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
+        await ensureClientReservationCounter();
         const { name, phone, email, model, year, message, services, basePrice, discount, finalPrice } = req.body;
 
         if (!name || !phone) {
@@ -35,10 +120,8 @@ exports.createReservation = async (req, res) => {
         let servicesList = [];
         if (services) servicesList = typeof services === 'string' ? JSON.parse(services) : services;
 
-        const [existingClients] = await connection.query('SELECT id FROM clients WHERE telephone = ?', [phone]);
-        let clientId;
-        if (existingClients.length > 0) {
-            clientId = existingClients[0].id;
+        let clientId = await resolveClientIdByPhone(connection, phone);
+        if (clientId) {
             await connection.query('UPDATE clients SET nom = ?, email = ? WHERE id = ?', [name, email || null, clientId]);
         } else {
             const [clientResult] = await connection.query(
@@ -47,6 +130,15 @@ exports.createReservation = async (req, res) => {
             );
             clientId = clientResult.insertId;
         }
+
+        // Remise fidélité : autres réservations du client (hors « Annulé »), avant celle-ci
+        let priorCount = 0;
+        try {
+            priorCount = await countPriorNonCancelledReservations(connection, clientId, null);
+        } catch (e) {
+            priorCount = 0;
+        }
+        const autoDiscountPercent = computeDiscountPercentFromCount(priorCount);
 
         const [reservationResult] = await connection.query(
             `INSERT INTO reservations (order_id, client_id, modele_vehicule, annee_vehicule, message_client, prix_base, remise, prix_final, statut)
@@ -83,7 +175,7 @@ exports.createReservation = async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Réservation enregistrée !',
-            data: { reservationId, orderId: String(reservationId) }
+            data: { reservationId, orderId: String(reservationId), autoDiscountPercent }
         });
     } catch (error) {
         await connection.rollback();
@@ -162,7 +254,7 @@ exports.getAllReservations = async (req, res) => {
             delai_remise:       delaiMap[r.id] || '',
             services_liste_agg: servicesMap[r.id] || '',
             nombre_images:      0,
-            est_client_fidele:  (phoneCounts[String(r.client_telephone || '').trim()] || 0) >= 2 ? 1 : 0
+            statut_fidelite: (phoneCounts[String(r.client_telephone || '').trim()] || 0) >= 2 ? 'fidele' : 'standard'
         }));
 
         res.status(200).json({ success: true, count: data.length, data });
@@ -200,6 +292,7 @@ exports.getReservationById = async (req, res) => {
         } catch (e) {}
 
         let services_noms = '';
+        let services_detail = [];
         try {
             const [svc] = await db.query(`
                 SELECT GROUP_CONCAT(
@@ -213,9 +306,30 @@ exports.getReservationById = async (req, res) => {
             services_noms = svc[0]?.noms || '';
         } catch (e) {}
 
+        try {
+            const [detailRows] = await db.query(
+                `
+                SELECT
+                    COALESCE(NULLIF(TRIM(s.nom_service),''), NULLIF(TRIM(s.nom),''), s.code, 'Service') AS service_nom,
+                    COALESCE(rs.prix_applique, 0) AS prix_applique
+                FROM reservation_services rs
+                LEFT JOIN services s ON s.id = rs.service_id
+                WHERE rs.reservation_id = ?
+                ORDER BY rs.id ASC
+                `,
+                [id]
+            );
+            services_detail = (detailRows || []).map((row) => ({
+                name: String(row.service_nom || 'Service').trim(),
+                price: Math.max(0, Number(row.prix_applique) || 0)
+            }));
+        } catch (e) {
+            services_detail = [];
+        }
+
         res.status(200).json({
             success: true,
-            data: { ...reservations[0], delai_remise, services_noms, images: [] }
+            data: { ...reservations[0], delai_remise, services_noms, services_detail, images: [] }
         });
     } catch (error) {
         console.error('❌ Erreur getReservationById:', error);
@@ -225,26 +339,87 @@ exports.getReservationById = async (req, res) => {
 
 // ============================================
 // VÉRIFIER CLIENT FIDÈLE
+// Compte les autres réservations non annulées (option excludeReservationId = ligne courante admin)
 // ============================================
 exports.checkReturningCustomer = async (req, res) => {
     try {
+        await ensureClientReservationCounter();
         const { phone } = req.params;
-        const [clients] = await db.query('SELECT id FROM clients WHERE telephone = ?', [phone]);
-        let reservationCount = 0;
-        if (clients.length > 0) {
-            const [countRows] = await db.query('SELECT COUNT(*) AS total FROM reservations WHERE client_id = ?', [clients[0].id]);
-            reservationCount = countRows[0]?.total || 0;
-        }
-        const isEligible = reservationCount >= 1;
+        const excludeReservationId = req.query.excludeReservationId ?? req.query.excludeReservation;
+
+        const clientId = await resolveClientIdByPhone(db, phone);
+
+        const priorCount = await countPriorNonCancelledReservations(db, clientId, excludeReservationId);
+
+        const discountPercent = computeDiscountPercentFromCount(priorCount);
+        const isEligible = discountPercent > 0;
+
         res.status(200).json({
-            success: true,
-            isFidele: isEligible,
-            isReturningCustomer: isEligible,
-            visitCount: reservationCount,
-            discount: isEligible ? 20 : 0
+            success:             true,
+            clientId,
+            reservationCount:    priorCount,
+            discountPercent,
+            isFidele:            isEligible,
+            isReturningCustomer: isEligible
         });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        console.error('❌ Erreur checkReturningCustomer:', error);
+        res.status(500).json({ success: false, message: error.message, reservationCount: 0, discountPercent: 0 });
+    }
+};
+
+// ============================================
+// FIDÉLITÉ À PARTIR DU N° DE RÉSERVATION (admin / devis)
+// Même règle que check-customer, mais client_id lu depuis la ligne réservation (pas le téléphone).
+// ============================================
+exports.getLoyaltyDiscountByReservationId = async (req, res) => {
+    try {
+        await ensureClientReservationCounter();
+        const id = Number(req.params.id);
+        if (!Number.isFinite(id) || id <= 0) {
+            return res.status(400).json({ success: false, message: 'ID de réservation invalide' });
+        }
+        const [rows] = await db.query(
+            `SELECT r.client_id, c.telephone AS client_telephone
+             FROM reservations r
+             INNER JOIN clients c ON c.id = r.client_id
+             WHERE r.id = ?
+             LIMIT 1`,
+            [id]
+        );
+        if (!rows?.length) {
+            return res.status(404).json({ success: false, message: 'Réservation non trouvée' });
+        }
+        const clientId = Number(rows[0].client_id) || null;
+        const clientPhone = String(rows[0].client_telephone || '').trim();
+        if (!clientId) {
+            return res.status(200).json({
+                success:             true,
+                reservationId:     id,
+                clientId:            null,
+                clientPhone:         clientPhone || null,
+                reservationCount:    0,
+                discountPercent:     0,
+                isFidele:            false,
+                isReturningCustomer: false
+            });
+        }
+        const priorCount = await countPriorNonCancelledReservations(db, clientId, id);
+        const discountPercent = computeDiscountPercentFromCount(priorCount);
+        const isEligible = discountPercent > 0;
+        res.status(200).json({
+            success:             true,
+            reservationId:     id,
+            clientId,
+            clientPhone:         clientPhone || null,
+            reservationCount:    priorCount,
+            discountPercent,
+            isFidele:            isEligible,
+            isReturningCustomer: isEligible
+        });
+    } catch (error) {
+        console.error('❌ Erreur getLoyaltyDiscountByReservationId:', error);
+        res.status(500).json({ success: false, message: error.message, reservationCount: 0, discountPercent: 0 });
     }
 };
 
@@ -259,6 +434,14 @@ exports.updateReservationStatus = async (req, res) => {
         if (!validStatuses.includes(statut)) {
             return res.status(400).json({ success: false, message: 'Statut invalide' });
         }
+        const [rowsPrev] = await db.query(
+            'SELECT statut AS prev_statut, client_id FROM reservations WHERE id = ? LIMIT 1',
+            [id]
+        );
+        const prev = rowsPrev[0];
+        if (!prev) {
+            return res.status(404).json({ success: false, message: 'Réservation non trouvée' });
+        }
         await db.query('UPDATE reservations SET statut = ? WHERE id = ?', [statut, id]);
         if (global.io) global.io.emit('reservation_updated', { id, statut });
         res.status(200).json({ success: true, message: 'Statut mis à jour' });
@@ -269,16 +452,22 @@ exports.updateReservationStatus = async (req, res) => {
 
 // ============================================
 // METTRE À JOUR LE PRIX (ADMIN)
+// ✅ CORRECTION : récupère date_emission depuis req.body et la passe au PDF
 // ============================================
 exports.updatePrice = async (req, res) => {
     try {
         const { id } = req.params;
-        const { prix_base, remise, prix_final, delai_remise, services_pricing } = req.body;
+        const { prix_base, remise, prix_final, delai_remise, date_emission, services_pricing } = req.body;
 
         await ensureDelaiRemiseColumn();
+        const pb = Math.max(0, Math.round(Number(prix_base) || 0));
+        let pf = Math.max(0, Math.round(Number(prix_final) || 0));
+        if (pf > pb) pf = pb;
+        const remiseMontant = Math.max(0, pb - pf);
+
         await db.query(
             'UPDATE reservations SET prix_base = ?, remise = ?, prix_final = ?, delai_remise = ? WHERE id = ?',
-            [prix_base, remise || 0, prix_final, delai_remise || null, id]
+            [pb, remiseMontant, pf, delai_remise || null, id]
         );
 
         if (Array.isArray(services_pricing) && services_pricing.length > 0) {
@@ -294,6 +483,9 @@ exports.updatePrice = async (req, res) => {
                 );
             }
         }
+
+        let quoteEmailSent = false;
+        let quoteEmailSkipped = null;
 
         try {
             const [rows] = await db.query(`
@@ -316,39 +508,68 @@ exports.updatePrice = async (req, res) => {
                     WHERE rs.reservation_id = ?
                     ORDER BY rs.id ASC
                 `, [id]);
+
                 const servicesLines = (svcRows || []).map((svc) => {
                     const name = String(svc.service_nom || 'Service').trim();
                     const price = Number(svc.prix_applique) || 0;
                     return price > 0 ? `${name} - ${formatDzdValue(price)}` : name;
                 });
+
                 const emailTo = String(row.client_email_q || '').trim();
 
-                if (emailTo && process.env.EMAIL_USER && process.env.EMAIL_PASSWORD) {
-                    const transporter = nodemailer.createTransport({
-                        service: 'gmail',
-                        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASSWORD }
-                    });
+                if (!emailTo) {
+                    quoteEmailSkipped = 'client_sans_email';
+                    console.warn(`⚠️  Devis PDF non envoyé (réservation ${id}) : le client n'a pas d'email.`);
+                } else if (!mailer.isMailConfigured()) {
+                    quoteEmailSkipped = 'smtp_non_configure';
+                    console.warn(`⚠️  Devis PDF non envoyé (réservation ${id}) : SMTP non configuré.`);
+                } else {
+                    // ✅ Utilise date_emission transmise par le frontend (moment de l'envoi du devis)
+                    // Sinon fallback sur maintenant
+                    const dateEmission = date_emission ? new Date(date_emission) : new Date();
+
                     const pdfBuf = await buildQuotePdfBuffer({
-                        reservationId: id, clientNom: row.client_nom_q,
-                        clientTelephone: row.client_telephone_q, clientEmail: row.client_email_q,
-                        modele: row.modele_vehicule, annee: row.annee_vehicule, servicesLines,
-                        prixBase: Number(row.prix_base) || 0, remise: Number(row.remise) || 0,
-                        prixFinal: Number(row.prix_final) || 0, delaiRemise: row.delai_remise || ''
+                        reservationId:   id,
+                        clientNom:       row.client_nom_q,
+                        clientTelephone: row.client_telephone_q,
+                        clientEmail:     row.client_email_q,
+                        modele:          row.modele_vehicule,
+                        annee:           row.annee_vehicule,
+                        servicesLines,
+                        prixBase:        Number(row.prix_base)  || 0,
+                        remise:          Number(row.remise)     || 0,
+                        prixFinal:       Number(row.prix_final) || 0,
+                        delaiRemise:     row.delai_remise       || '',
+                        dateEmission:    dateEmission.toISOString()  // ✅ date correcte
                     });
-                    await transporter.sendMail({
-                        from: process.env.EMAIL_FROM || `RY Performance <${process.env.EMAIL_USER}>`,
+
+                    const emissionFr = dateEmission.toLocaleString('fr-FR', {
+                        dateStyle: 'long',
+                        timeStyle: 'short',
+                        timeZone: 'Africa/Algiers'
+                    });
+
+                    await mailer.sendMail({
                         to: emailTo,
                         subject: `RY Performance — Votre devis (réservation ${id})`,
-                        text: `Bonjour ${row.client_nom_q || ''},\n\nVotre devis est en pièce jointe.\nPrix final : ${Number(row.prix_final) || 0} DZD.\n\nCordialement,\nRY Performance`,
+                        text: `Bonjour ${row.client_nom_q || ''},\n\nVotre devis est en pièce jointe.\nDate d'émission : ${emissionFr}\nPrix final : ${formatDzdValue(Number(row.prix_final) || 0)}.\n\nCordialement,\nRY Performance`,
                         attachments: [{ filename: `devis-RY-Performance-${id}.pdf`, content: pdfBuf }]
                     });
+                    quoteEmailSent = true;
+                    console.log(`✅ Devis PDF envoyé à ${emailTo} (réservation ${id})`);
                 }
             }
         } catch (mailErr) {
-            console.error('Email devis:', mailErr.message);
+            quoteEmailSkipped = mailErr.code || 'erreur_envoi';
+            console.error('❌ Erreur envoi email devis:', mailErr.message || mailErr);
         }
 
-        res.status(200).json({ success: true, message: 'Prix mis à jour' });
+        res.status(200).json({
+            success: true,
+            message: 'Prix mis à jour',
+            quoteEmailSent,
+            quoteEmailSkipped: quoteEmailSkipped || null
+        });
     } catch (error) {
         console.error('❌ Erreur updatePrice:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -448,9 +669,9 @@ exports.getStatistics = async (req, res) => {
             success: true,
             data: {
                 total_reservations: total,
-                non_traitees: nonTraitees,
-                chiffre_affaires: revenu,
-                panier_moyen: moyenne
+                non_traitees:       nonTraitees,
+                chiffre_affaires:   revenu,
+                panier_moyen:       moyenne
             }
         });
     } catch (error) {

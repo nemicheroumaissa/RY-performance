@@ -69,7 +69,13 @@ exports.authenticateToken = async (req, res, next) => {
 // MIDDLEWARE : Vérifier si l'utilisateur est admin
 // ============================================
 exports.isAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') {
+    const role = String(req.user?.role || '').toLowerCase();
+    const isAdminRole =
+        role === 'admin_principal' ||
+        role === 'admin_secondaire' ||
+        role === 'admin';
+
+    if (!isAdminRole) {
         return res.status(403).json({
             success: false,
             message: 'Accès refusé. Privilèges administrateur requis.'
@@ -82,7 +88,13 @@ exports.isAdmin = (req, res, next) => {
 // MIDDLEWARE : Vérifier si l'utilisateur est admin OU employé
 // ============================================
 exports.isAdminOrEmployee = (req, res, next) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'employee') {
+    const role = String(req.user?.role || '').toLowerCase();
+    const isAdminRole =
+        role === 'admin_principal' ||
+        role === 'admin_secondaire' ||
+        role === 'admin';
+
+    if (!isAdminRole && role !== 'employee') {
         return res.status(403).json({
             success: false,
             message: 'Accès refusé.'

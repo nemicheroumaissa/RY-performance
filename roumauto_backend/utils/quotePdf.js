@@ -11,8 +11,10 @@ const PDFDocument = require('pdfkit');
  * @param {number} data.prixBase
  * @param {number} data.remise
  * @param {number} data.prixFinal
+ * @param {number} [data.remisePercent]
  * @param {string} [data.delaiRemise]
  * @param {string|number} data.reservationId
+ * @param {string|Date} [data.dateEmission]
  */
 function buildQuotePdfBuffer(data) {
     return new Promise((resolve, reject) => {
@@ -44,18 +46,18 @@ function buildQuotePdfBuffer(data) {
         doc.fillColor('rgba(255,255,255,0.7)')
            .fontSize(10)
            .font('Helvetica')
-           .text('Devis & Confirmation de réservation', MARGIN, 52, { align: 'left' });
+           .text('Devis & Confirmation de reservation', MARGIN, 52, { align: 'left' });
 
-        // Numéro de réservation en haut à droite
+        // ── Numéro de réservation dans le header (sans date) ──────
         doc.fillColor(WHITE)
            .fontSize(10)
            .font('Helvetica-Bold')
-           .text(`Réf. #${data.reservationId}`, MARGIN, 35, { align: 'right', width: COL_W });
+           .text(`Ref. #${data.reservationId}`, MARGIN, 38, { align: 'right', width: COL_W });
 
         const CONTENT_BOTTOM = doc.page.height - 80;
         let y = 104;
 
-        // ── Ligne de séparation colorée fine ─────────────────────
+        // ── Ligne de séparation ───────────────────────────────────
         doc.rect(MARGIN, y, COL_W, 2).fill(PURPLE_L);
         y += 12;
 
@@ -64,10 +66,10 @@ function buildQuotePdfBuffer(data) {
         y += 28;
 
         const clientLines = [
-            ['Nom',       data.clientNom       || '—'],
-            ['Téléphone', data.clientTelephone  || '—'],
+            ['Nom',       data.clientNom       || '-'],
+            ['Telephone', data.clientTelephone  || '-'],
             ...(data.clientEmail ? [['Email', data.clientEmail]] : []),
-            ['Véhicule',  `${data.modele || '—'}${data.annee ? '  (' + data.annee + ')' : ''}`],
+            ['Vehicule',  `${data.modele || '-'}${data.annee ? '  (' + data.annee + ')' : ''}`],
         ];
 
         clientLines.forEach(([label, value]) => {
@@ -81,17 +83,16 @@ function buildQuotePdfBuffer(data) {
         y += 6;
 
         // ── Bloc services ─────────────────────────────────────────
-        sectionTitle(doc, 'Services demandés', MARGIN, y, COL_W, PURPLE, GRAY_L);
+        sectionTitle(doc, 'Services demandes', MARGIN, y, COL_W, PURPLE, GRAY_L);
         y += 28;
 
         const lines = data.servicesLines && data.servicesLines.length
             ? data.servicesLines
-            : ['—'];
+            : ['-'];
 
         const maxServices = 8;
         const renderedLines = lines.slice(0, maxServices);
         renderedLines.forEach((line, i) => {
-            // Alternance légère de fond
             if (i % 2 === 0) {
                 doc.rect(MARGIN, y - 2, COL_W, 16).fill('#faf9fc');
             }
@@ -108,7 +109,7 @@ function buildQuotePdfBuffer(data) {
 
         y += 6;
 
-        // ── Bloc remise/délai (si applicable) ────────────────────
+        // ── Bloc remise/délai ─────────────────────────────────────
         if (data.delaiRemise && String(data.delaiRemise).trim()) {
             sectionTitle(doc, 'Conditions de la remise', MARGIN, y, COL_W, PURPLE, GRAY_L);
             y += 28;
@@ -119,46 +120,86 @@ function buildQuotePdfBuffer(data) {
 
         // ── Bloc récapitulatif des prix ───────────────────────────
         if (y > CONTENT_BOTTOM - 90) y = CONTENT_BOTTOM - 90;
-        sectionTitle(doc, 'Récapitulatif des montants', MARGIN, y, COL_W, PURPLE, GRAY_L);
+        sectionTitle(doc, 'Recapitulatif des montants', MARGIN, y, COL_W, PURPLE, GRAY_L);
         y += 28;
 
-        const prixBase  = Number(data.prixBase)  || 0;
-        const remise    = Number(data.remise)     || 0;
-        const prixFinal = Number(data.prixFinal)  || 0;
+        const prixBase  = Math.round(Number(data.prixBase)  || 0);
+        const prixFinal = Math.round(Math.min(Number(data.prixFinal) || 0, prixBase > 0 ? prixBase : Infinity));
 
-        if (prixBase > 0 && remise > 0) {
-            priceRow(doc, 'Prix de base',  formatNum(prixBase),  MARGIN, y, COL_W, GRAY_D, GRAY_M, false);
+        const remiseMontant = Math.max(0, prixBase - prixFinal);
+        const remisePct = prixBase > 0 && remiseMontant > 0
+            ? Math.round((remiseMontant / prixBase) * 10000) / 100
+            : 0;
+
+        if (prixBase > 0) {
+            priceRow(doc, 'Prix de base', formatNum(prixBase), MARGIN, y, COL_W, GRAY_D, GRAY_M);
             y += 20;
         }
 
-        if (remise > 0) {
-            priceRow(doc, 'Remise client', '- ' + formatNum(remise), MARGIN, y, COL_W, GREEN, GRAY_M, false);
+        if (remisePct > 0) {
+            priceRow(
+                doc,
+                'Taux de remise fidelite',
+                `- ${formatPercentLabel(remisePct)} %`,
+                MARGIN, y, COL_W, GREEN, GRAY_M
+            );
+            y += 20;
+            priceRow(
+                doc,
+                'Montant de la remise',
+                `- ${formatNum(remiseMontant)}`,
+                MARGIN, y, COL_W, GREEN, GRAY_M
+            );
+            y += 20;
+        } else if (remiseMontant > 0) {
+            priceRow(doc, 'Remise client', `- ${formatNum(remiseMontant)}`, MARGIN, y, COL_W, GREEN, GRAY_M);
             y += 20;
         }
 
-        // Ligne séparatrice avant total (uniquement s'il y a un détail de remise)
-        if (remise > 0) {
+        if (remiseMontant > 0) {
             doc.rect(MARGIN + 10, y, COL_W - 20, 1).fill('#dddddd');
             y += 8;
         }
 
-        // Total en évidence
+        // ── Bandeau prix final ────────────────────────────────────
         doc.rect(MARGIN, y, COL_W, 30).fill(PURPLE).stroke();
         doc.font('Helvetica-Bold').fontSize(12).fillColor(WHITE)
            .text('PRIX FINAL', MARGIN + 12, y + 8, { continued: false, width: COL_W / 2 });
         doc.font('Helvetica-Bold').fontSize(14).fillColor(WHITE)
-           .text(prixFinal > 0 ? formatNum(prixFinal) : 'À définir par l\'administrateur', MARGIN, y + 7, { align: 'right', width: COL_W - 12 });
-
-        y += 42;
-
-        // ── Note de bas de page ───────────────────────────────────
-        doc.rect(0, doc.page.height - 44, PAGE_W, 44).fill(GRAY_L);
-        doc.font('Helvetica').fontSize(8).fillColor(GRAY_M)
            .text(
-               'Document généré automatiquement par RY Performance · Ce devis est fourni à titre indicatif.',
-               MARGIN,
-               doc.page.height - 28,
-               { align: 'center', width: COL_W }
+               prixFinal > 0 ? formatNum(prixFinal) : "A definir par l'administrateur",
+               MARGIN, y + 7, { align: 'right', width: COL_W - 12 }
+           );
+
+        // ── Footer : date d'émission + mention légale ─────────────
+        const emissionStr = formatEmissionDate(
+            data.dateEmission !== undefined && data.dateEmission !== null && String(data.dateEmission).trim() !== ''
+                ? data.dateEmission
+                : new Date()
+        );
+
+        const FOOTER_H = 62;
+        const FOOTER_Y = doc.page.height - FOOTER_H;
+
+        // Fond footer
+        doc.rect(0, FOOTER_Y, PAGE_W, FOOTER_H).fill(GRAY_L);
+        // Barre décorative violette en haut du footer
+        doc.rect(0, FOOTER_Y, PAGE_W, 3).fill(PURPLE);
+
+        // Date d'émission — à gauche, mise en valeur
+        if (emissionStr) {
+            doc.font('Helvetica-Bold').fontSize(8.5).fillColor(PURPLE)
+               .text("Date d'emission :", MARGIN, FOOTER_Y + 10);
+            doc.font('Helvetica').fontSize(9).fillColor(GRAY_D)
+               .text(emissionStr, MARGIN, FOOTER_Y + 23);
+        }
+
+        // Mention légale — à droite
+        doc.font('Helvetica').fontSize(7.5).fillColor(GRAY_M)
+           .text(
+               'Document genere automatiquement par RY Performance\nCe devis est fourni a titre indicatif.',
+               MARGIN, FOOTER_Y + 10,
+               { align: 'right', width: COL_W, lineGap: 3 }
            );
 
         doc.end();
@@ -167,7 +208,6 @@ function buildQuotePdfBuffer(data) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Bloc titre de section avec fond coloré */
 function sectionTitle(doc, text, x, y, width, bgColor, bgLight) {
     doc.rect(x, y, width, 24).fill(bgLight);
     doc.rect(x, y, 4, 24).fill(bgColor);
@@ -175,7 +215,6 @@ function sectionTitle(doc, text, x, y, width, bgColor, bgLight) {
        .text(text.toUpperCase(), x + 12, y + 7, { width: width - 20 });
 }
 
-/** Ligne de prix (label gauche, valeur droite) */
 function priceRow(doc, label, value, x, y, width, valueColor, labelColor) {
     doc.font('Helvetica').fontSize(10).fillColor(labelColor)
        .text(label, x + 10, y, { continued: false, width: width / 2 });
@@ -183,10 +222,33 @@ function priceRow(doc, label, value, x, y, width, valueColor, labelColor) {
        .text(value, x, y, { align: 'right', width: width - 10 });
 }
 
+// Espace normale ASCII comme séparateur de milliers — pas d'espace fine \u202f
 function formatNum(n) {
-    const x = Number(n) || 0;
-    const s = Math.round(x).toString();
-    return s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DZD';
+    const x = Math.round(Number(n) || 0);
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' DZD';
+}
+
+function formatPercentLabel(pct) {
+    const x = Math.round(Number(pct) * 100) / 100;
+    if (!Number.isFinite(x) || x <= 0) return '0';
+    return x % 1 === 0 ? String(x) : x.toFixed(2);
+}
+
+// Formatage manuel sans Intl — aucun caractère spécial incompatible PDFKit
+function formatEmissionDate(isoOrDate) {
+    if (isoOrDate == null || isoOrDate === '') return '';
+    const d = isoOrDate instanceof Date ? isoOrDate : new Date(isoOrDate);
+    if (Number.isNaN(d.getTime())) return '';
+    const months = [
+        'janvier','fevrier','mars','avril','mai','juin',
+        'juillet','aout','septembre','octobre','novembre','decembre'
+    ];
+    const day   = d.getDate();
+    const month = months[d.getMonth()];
+    const year  = d.getFullYear();
+    const hh    = String(d.getHours()).padStart(2, '0');
+    const mm    = String(d.getMinutes()).padStart(2, '0');
+    return `${day} ${month} ${year} a ${hh}:${mm}`;
 }
 
 module.exports = { buildQuotePdfBuffer };

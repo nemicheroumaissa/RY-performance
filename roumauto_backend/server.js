@@ -4,7 +4,19 @@ const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
+
+// Un seul fichier .env (évite qu’une ligne vide dans backend/.env écrase la racine)
+const envLocal = path.join(__dirname, '.env');
+const envRoot = path.join(__dirname, '..', '.env');
+if (fs.existsSync(envLocal)) {
+    require('dotenv').config({ path: envLocal });
+} else if (fs.existsSync(envRoot)) {
+    require('dotenv').config({ path: envRoot });
+} else {
+    require('dotenv').config();
+}
+
+const mailer = require('./utils/mailer');
 
 const app = express();
 const server = http.createServer(app);
@@ -80,6 +92,13 @@ app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date() });
 });
 
+// Site client + admin servis en HTTP (évite file:// et erreurs « cross-origin » navigateur)
+const projectRoot = path.join(__dirname, '..');
+app.use(express.static(projectRoot, { index: 'index.html' }));
+app.get('/admin', (req, res) => {
+    res.redirect(302, '/admin.html');
+});
+
 // ============================================
 // SOCKET.IO
 // ============================================
@@ -141,6 +160,12 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`✅ Écoute sur 0.0.0.0:${PORT} (localhost + réseau local)`);
     console.log(`💬 Socket.io: ACTIVÉ`);
     console.log(`📁 Uploads: ${uploadsDir}`);
+    console.log(`🌐 Admin : http://127.0.0.1:${PORT}/admin.html  (ou /admin)`);
+    console.log(`🌐 Site  : http://127.0.0.1:${PORT}/`);
+    mailer.logStartupMailHint();
+    mailer.verifySmtpOnStartup().catch((e) => {
+        console.error('❌ Email verifySmtpOnStartup:', e.message || e);
+    });
     console.log('=================================');
 });
 
