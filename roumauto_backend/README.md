@@ -88,15 +88,6 @@ Le système contient également un espace administrateur complet pour la gestion
 
 ---
 
-#  Notifications Automatiques
-
-Le système envoie automatiquement :
-- une facture électronique après validation d’une réservation,
-- une notification au super administrateur lors d’une demande d’inscription administrateur.
-
----
-
-#  Installation
 
 ```bash
 git clone https://github.com/TON-USERNAME/TON-REPO.git
