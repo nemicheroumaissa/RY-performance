@@ -485,12 +485,12 @@ table td {
 
         .search-filter {
            display: flex;
-    flex-wrap: wrap;       /* allow inputs to go to next line on small screens */
+    flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 1rem;
     padding: 1rem;
-    background: #1e1e1e;   /* dark background */
-    border-radius: 12px;   /* rounded corners */
+    background: #1e1e1e;
+    border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
          
@@ -512,11 +512,11 @@ table td {
             background: rgba(155, 89, 182, 0.2) !important;
             border-left: 4px solid var(--primary-color);
         }
-        /* ============================================
-   STYLES POUR AUTHENTIFICATION (À AJOUTER À LA FIN)
+
+/* ============================================
+   AUTHENTIFICATION
    ============================================ */
 
-/* Onglets de connexion/inscription */
 .auth-tabs {
     display: flex;
     gap: 0;
@@ -553,7 +553,6 @@ table td {
     display: block;
 }
 
-/* Onglets de navigation admin */
 .tabs-container {
     display: flex;
     gap: 1rem;
@@ -600,7 +599,6 @@ table td {
     display: block;
 }
 
-/* Demandes d'accès */
 .demandes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -651,7 +649,6 @@ table td {
     flex: 1;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .tabs-container {
         flex-direction: column;
@@ -669,7 +666,7 @@ table td {
     }
 
     .demandes-grid {
-        grid-template-columns: 1fr;
+        grid-column: 1fr;
     }
 
     .auth-tabs {
@@ -777,7 +774,7 @@ table td {
 }
 
 /* ============================================
-   MODAL DÉTAILS RÉSERVATION (PHOTOS)
+   MODAL DÉTAILS RÉSERVATION
    ============================================ */
 
 .modal-large {
@@ -813,7 +810,6 @@ table td {
     font-weight: 600;
 }
 
-/* Message complet (lisible, défilable) dans la modal Détails */
 .detail-message-full {
     white-space: pre-wrap;
     word-break: break-word;
@@ -901,7 +897,6 @@ table td {
     min-height: 0;
 }
 
-/* Lisibilité: fond léger + scroll confortable */
 .admin-chat-messages {
     background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.22));
 }
@@ -966,15 +961,17 @@ table td {
     border-radius: 14px;
     font-size: 1.05rem;
     position: relative;
-    display: inline-block;
+    display: block !important;
     min-width: 0;
     box-sizing: border-box;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    word-break: normal;
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    word-break: break-word !important;
+    word-wrap: break-word !important;
+    max-width: 72% !important;
+    width: auto !important;
 }
 
-/* Lisibilité: interligne + contraste + ombre */
 .admin-chat-message {
     line-height: 1.6;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
@@ -1058,17 +1055,24 @@ table td {
 }
 
 .msg-status-sent {
-    color: var(--silver);
+    color: #6b7280 !important;
+    font-size: 0.72rem;
 }
 
 .msg-status-delivered {
-    color: var(--silver);
+    color: #6b7280 !important;
+    font-size: 0.72rem;
 }
 
 .msg-status-read {
-    color: var(--primary-color);
+    color: var(--primary-color) !important;
     font-weight: 600;
+    font-size: 0.72rem;
 }
+
+.admin-chat-meta .msg-status-sent     { color: #6b7280 !important; }
+.admin-chat-meta .msg-status-delivered{ color: #6b7280 !important; }
+.admin-chat-meta .msg-status-read     { color: var(--primary-color) !important; font-weight: 600; }
 
 @media (max-width: 992px) {
     .admin-chat-container {
@@ -1092,7 +1096,8 @@ table td {
     flex-direction: row;
     align-items: flex-start;
     gap: 0.35rem;
-    max-width: 100%;
+    max-width: 75%;
+    min-width: 0;
 }
 
 .admin-chat-row.me .admin-chat-row-inner {
@@ -1121,7 +1126,7 @@ table td {
     background: rgba(255, 255, 255, 0.04);
 }
 
-/* Ombre blanche sur les cadres principaux */
+/* Ombres générales */
 .stat-card,
 .commands-section,
 .table-container,
@@ -1141,35 +1146,9 @@ table td {
         0 4px 28px rgba(255, 255, 255, 0.1),
         0 0 36px rgba(255, 255, 255, 0.06);
 }
-/* ============================================
-   MODIFICATIONS CIBLÉES — À AJOUTER À LA FIN DE admin.css
-   ============================================ */
 
 /* -----------------------------------------------
-   MOD 5 : Statuts messages — couleurs uniformisées
-   admin + client : gris foncé pour sent/delivered, mauve pour read
-   ----------------------------------------------- */
-.msg-status-sent {
-    color: #6b7280 !important;   /* gris foncé */
-    font-size: 0.72rem;
-}
-.msg-status-delivered {
-    color: #6b7280 !important;   /* gris foncé */
-    font-size: 0.72rem;
-}
-.msg-status-read {
-    color: var(--primary-color) !important;  /* mauve */
-    font-weight: 600;
-    font-size: 0.72rem;
-}
-/* Idem dans la zone admin-chat-meta */
-.admin-chat-meta .msg-status-sent     { color: #6b7280 !important; }
-.admin-chat-meta .msg-status-delivered{ color: #6b7280 !important; }
-.admin-chat-meta .msg-status-read     { color: var(--primary-color) !important; font-weight: 600; }
-
-/* -----------------------------------------------
-   MOD 7 : Boutons du tableau — ne plus être coupés
-   Actions compactes avec icônes uniquement (tooltip via title)
+   MOD 7 : Actions tableau compactes
    ----------------------------------------------- */
 .reservation-actions {
     display: flex;
@@ -1185,7 +1164,6 @@ table td {
     flex-wrap: nowrap;
 }
 
-/* Boutons icône uniquement : carré compact */
 .reservation-actions .action-btn.btn-small {
     padding: 0.35rem 0.45rem;
     font-size: 1rem;
@@ -1199,7 +1177,6 @@ table td {
     justify-content: center;
 }
 
-/* Select statut pleine largeur */
 .action-select {
     width: 100%;
     padding: 0.32rem 0.4rem;
@@ -1212,7 +1189,7 @@ table td {
 }
 
 /* -----------------------------------------------
-   MOD 4 : Barre de recherche dans les conversations admin
+   Barre recherche conversations admin
    ----------------------------------------------- */
 .admin-conv-search {
     padding: 0.6rem 0.75rem;
@@ -1242,7 +1219,7 @@ table td {
 }
 
 /* -----------------------------------------------
-   MOD 3 : Modal Ajouter — services stylisés
+   Modal Ajouter — services stylisés
    ----------------------------------------------- */
 .services-checkbox-grid {
     display: grid;
@@ -1277,7 +1254,6 @@ table td {
     flex-shrink: 0;
 }
 
-/* Ligne séparatrice légère entre sections du modal Ajouter */
 .add-modal-section-divider {
     border: none;
     border-top: 1px solid rgba(255,255,255,0.07);
@@ -1332,25 +1308,59 @@ table td {
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
-.admin-chat-message {
-    white-space: pre-wrap !important;
-    overflow-wrap: break-word !important;
-    word-break: break-word !important;
-    word-wrap: break-word !important;
-    display: block !important;      /* ← était inline-block, c'est le vrai bug */
-    max-width: 72% !important;
-    width: auto !important;
-    min-width: 0 !important;
+
+/* ============================================
+   MENU CONTEXTUEL (CLIC DROIT) — MESSAGES ADMIN
+   ============================================ */
+.message-context-menu {
+    background: var(--dark-gray);
+    border: 1px solid rgba(155, 89, 182, 0.45);
+    border-radius: 10px;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+    min-width: 175px;
+    z-index: 10050;
+    animation: ctxMenuFadeIn 0.13s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* La bulle ne doit pas dépasser son conteneur */
-.admin-chat-row-inner {
-    max-width: 75%;
-    min-width: 0;
+@keyframes ctxMenuFadeIn {
+    from { opacity: 0; transform: scale(0.93) translateY(-4px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.message-context-action {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 10px 14px;
+    background: transparent;
+    border: none;
+    font-size: 0.88rem;
+    color: var(--text-color);
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s ease;
+    font-family: 'Arial', sans-serif;
 }
 
-.admin-chat-row.me .admin-chat-row-inner {
-    align-self: flex-end;
+.message-context-action:hover {
+    background: rgba(155, 89, 182, 0.18);
+}
+
+.message-context-action.delete {
+    color: var(--danger);
+}
+
+.message-context-action.delete:hover {
+    background: rgba(231, 76, 60, 0.16);
+    color: #ff6b6b;
+}
+
+.message-context-sep {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    margin: 2px 0;
 }

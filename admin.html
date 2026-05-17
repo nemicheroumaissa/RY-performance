@@ -3,737 +3,449 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RY Performance</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Admin Panel - RY Performance</title>
+    <link rel="stylesheet" href="admin.css">
     <link rel="icon" type="image/png" href="logo.png">
-    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
-        /* ── Programme Fidélité dans le Hero ── */
-        .hero-loyalty {
-            margin-top: 2.8rem;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            border-radius: 16px;
-            padding: 1.4rem 2rem;
-            display: inline-block;
-            max-width: 560px;
-            width: 100%;
-        }
-        .hero-loyalty-title {
-            color: #fff;
-            font-size: 1rem;
-            margin: 0 0 1.1rem 0;
-            font-weight: 600;
-            letter-spacing: 0.01em;
-        }
-        .hero-loyalty-title strong {
-            color: #c97ef7;
-        }
-        .hero-loyalty-steps {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-        }
-        .hero-loyalty-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background: rgba(123, 45, 139, 0.55);
-            border: 1px solid rgba(180, 100, 220, 0.4);
-            border-radius: 12px;
-            padding: 0.55rem 1.1rem;
-            min-width: 64px;
-            transition: transform 0.2s;
-        }
-        .hero-loyalty-step:hover {
-            transform: translateY(-3px);
-            background: rgba(123, 45, 139, 0.8);
-        }
-        .loyalty-num {
-            font-size: 0.85rem;
-            color: rgba(255,255,255,0.7);
-            font-weight: 500;
-        }
-        .loyalty-num sup {
-            font-size: 0.65rem;
-        }
-        .loyalty-pct {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: #d4a8f5;
-            margin-top: 2px;
-        }
-        .loyalty-arrow {
-            color: rgba(255,255,255,0.35);
-            font-size: 1.1rem;
-            font-weight: 300;
-        }
-        .hero-loyalty-sub {
-            color: rgba(255,255,255,0.5);
-            font-size: 0.78rem;
-            margin: 0.9rem 0 0 0;
-            text-align: center;
-        }
-        @media (max-width: 600px) {
-            .hero-loyalty { padding: 1.1rem 1rem; }
-            .hero-loyalty-step { min-width: 52px; padding: 0.45rem 0.7rem; }
-            .loyalty-pct { font-size: 1.05rem; }
-        }
+        .admin-chat-message { max-width:100%!important;min-width:60px!important;width:auto!important;word-break:break-word!important;white-space:pre-wrap!important;padding:.6rem .9rem!important;border-radius:14px!important;font-size:.95rem!important;line-height:1.45!important; }
+        .admin-chat-row-inner { max-width:68%!important;width:auto!important; }
+        .admin-chat-row.me { display:flex!important;flex-direction:column!important;align-items:flex-end!important; }
+        .admin-chat-row.other { display:flex!important;flex-direction:column!important;align-items:flex-start!important; }
+        .admin-chat-row.me .admin-chat-row-inner { justify-content:flex-end!important; }
+        .admin-chat-row.other .admin-chat-row-inner { justify-content:flex-start!important; }
+        #adminConvSearchInput::placeholder { color:rgba(255,255,255,.35); }
+        #adminConvSearchInput:focus { border-color:#7B2D8B!important;background:rgba(255,255,255,.1)!important;box-shadow:0 0 0 2px rgba(123,45,139,.3); }
     </style>
+    <!-- Socket.io pour la messagerie temps réel -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="container">
-            <div class="nav-brand">
-                <img src="logo.png" alt="RY Performance Logo" class="logo">
-                <h2>RY Performance</h2>
-            </div>
-            <div class="nav-menu" id="nav-menu">
-                <a href="#home" class="nav-link active">Accueil</a>
-                <a href="#gallery" class="nav-link">Galerie</a>
-                <a href="#services" class="nav-link">Services</a>
-                <a href="#faq" class="nav-link">FAQ</a>
-                <a href="#contact" class="nav-link">Contact</a>
-            </div>
-            <div class="nav-toggle" id="nav-toggle">
-                <span></span>
-                <span></span>
-                <span></span>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section id="home" class="hero">
-        <div class="hero-overlay"></div>
-        <div class="hero-content">
-            <div class="container">
-                <h1 class="hero-title">Votre Voiture, Votre Style</h1>
-                <p class="hero-subtitle">Offrez à votre véhicule une transformation unique grâce à nos services de personnalisation avancée</p>
-                <a href="#contact" class="btn">Réservez maintenant</a>
-                <a href="#services" class="btn btn-secondary">Nos services</a>
-
-                <!-- Programme fidélité intégré dans le hero -->
-                <div class="hero-loyalty">
-                    <p class="hero-loyalty-title">🎁 Programme Fidélité — jusqu'à <strong>-20%</strong> de remise automatique</p>
-                    <div class="hero-loyalty-steps">
-                        <div class="hero-loyalty-step">
-                            <span class="loyalty-num">2<sup>e</sup> résa</span>
-                            <span class="loyalty-pct">-5%</span>
-                        </div>
-                        <div class="loyalty-arrow">→</div>
-                        <div class="hero-loyalty-step">
-                            <span class="loyalty-num">3<sup>e</sup> résa</span>
-                            <span class="loyalty-pct">-10%</span>
-                        </div>
-                        <div class="loyalty-arrow">→</div>
-                        <div class="hero-loyalty-step">
-                            <span class="loyalty-num">4<sup>e</sup>+ résa</span>
-                            <span class="loyalty-pct">-20%</span>
-                        </div>
-                    </div>
-                    <p class="hero-loyalty-sub">Remise appliquée automatiquement à chaque nouvelle réservation</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Gallery Section avec PHOTOS INTERNET -->
-    <section id="gallery" class="gallery">
-        <div class="container">
-            <h2 class="section-title">Galerie Avant/Après</h2>
-            <p style="text-align: center; color: var(--text-gray); margin-bottom: 2rem;">
-                Découvrez nos réalisations sur le marché algérien
-            </p>
+    <!-- Login Section -->
+    <div id="loginSection" class="login-container">
+        <div class="login-form">
+            <h2>🔐 Admin Panel</h2>
             
-            <div class="gallery-grid">
-                <div class="gallery-item" onclick="openGalleryModal(1)">
-                    <img src="clio4ap.png" alt="Peinture Complète" class="gallery-image">
-                    <div class="gallery-caption">
-                        <h3>Peinture Complète</h3>
-                        <p>Clio 4 - Transformation spectaculaire</p>
-                    </div>
-                </div>
-
-                <div class="gallery-item" onclick="openGalleryModal(2)">
-                    <img src="golf7ap.png" alt="Covering Vinyl" class="gallery-image">
-                    <div class="gallery-caption">
-                        <h3>Covering Vinyl Matt</h3>
-                        <p>Golf 7 - Finition premium</p>
-                    </div>
-                </div>
-
-                <div class="gallery-item" onclick="openGalleryModal(3)">
-                    <img src="leonap.png" alt="Kit Carrosserie" class="gallery-image">
-                    <div class="gallery-caption">
-                        <h3>Kit Carrosserie Sport</h3>
-                        <p>Seat Leon - Look agressif</p>
-                    </div>
-                </div>
-
-                <div class="gallery-item" onclick="openGalleryModal(4)">
-                    <img src="poloap.png" alt="Jantes Custom" class="gallery-image">
-                    <div class="gallery-caption">
-                        <h3>Jantes Custom</h3>
-                        <p>Polo GTI - Design sportif</p>
-                    </div>
-                </div>
-
-                <div class="gallery-item" onclick="openGalleryModal(5)">
-                    <img src="tiguanap.png" alt="Vitres Teintées" class="gallery-image">
-                    <div class="gallery-caption">
-                        <h3>Vitres Teintées</h3>
-                        <p>Tiguan - Élégance et intimité</p>
-                    </div>
-                </div>
-
-                <div class="gallery-item" onclick="openGalleryModal(6)">
-                    <img src="audiap.png" alt="Coating Céramique" class="gallery-image">
-                    <div class="gallery-caption">
-                        <h3>Coating Céramique</h3>
-                        <p>Audi A3 - Brillance ultime</p>
-                    </div>
-                </div>
+            <!-- Onglets Login/Signup -->
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" onclick="switchAuthTab('login')">Connexion</button>
+                <button type="button" class="auth-tab" onclick="switchAuthTab('signup')">Inscription</button>
             </div>
-        </div>
-    </section>
 
-    <!-- Services Section -->
-    <section id="services" class="services">
-        <div class="container">
-            <h2 class="section-title">Nos Services</h2>
-            <div class="services-grid">
-                <div class="service-card" onclick="openServiceModal(1)">
-                    <div class="service-image">
-                        <img src="p.jpg" width="370" alt="Peinture Auto" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Peinture Automobile</h3>
-                        <p>Peinture complète de votre véhicule avec des finitions premium. Préparation minutieuse, apprêt de qualité et vernis protecteur pour un résultat durable.</p>
-                        <span class="service-price">À partir de 50,000 DA</span>
-                    </div>
-                </div>
+            <div id="loginError"></div>
 
-                <div class="service-card" onclick="openServiceModal(2)">
-                    <div class="service-image">
-                        <img src="c.jpg" width="370" alt="Covering Vinyl" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Covering Vinyl Complet</h3>
-                        <p>Installation de film vinyle haute qualité pour changer la couleur de votre véhicule. Protection de la peinture d'origine avec des finitions mat, brillant ou carbone.</p>
-                        <span class="service-price">À partir de 80,000 DA</span>
-                    </div>
+            <!-- Formulaire de connexion -->
+            <form id="loginForm" class="auth-tab-content active">
+                <div class="form-group">
+                    <label for="login-username">Nom d'utilisateur ou Email</label>
+                    <input type="text" id="login-username" name="username" required>
                 </div>
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" name="password" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">Se connecter</button>
+            </form>
 
-                <div class="service-card" onclick="openServiceModal(3)">
-                    <div class="service-image">
-                        <img src="k.jpg" width="370" alt="Kit Carrosserie" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Installation Kit Carrosserie</h3>
-                        <p>Pose de kits carrosserie sport : spoilers, jupes latérales, pare-chocs modifiés. Installation professionnelle et peinture assortie.</p>
-                        <span class="service-price">À partir de 120,000 DA</span>
-                    </div>
+            <!-- Formulaire d'inscription -->
+            <div id="signupForm" class="auth-tab-content">
+                <div class="form-group">
+                    <label for="signup-nom">Nom complet *</label>
+                    <input type="text" id="signup-nom" name="nom">
                 </div>
-
-                <div class="service-card" onclick="openServiceModal(4)">
-                    <div class="service-image">
-                        <img src="j.jpg" alt="Jantes Custom" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Personnalisation Jantes</h3>
-                        <p>Customisation de jantes : peinture, polissage, finitions spéciales. Large gamme de couleurs et d'effets pour un style unique.</p>
-                        <span class="service-price">À partir de 40,000 DA</span>
-                    </div>
+                <div class="form-group">
+                    <label for="signup-email">Email *</label>
+                    <input type="email" id="signup-email" name="email">
                 </div>
-
-                <div class="service-card" onclick="openServiceModal(5)">
-                    <div class="service-image">
-                        <img src="g.jpg" alt="Vitres Teintées" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Vitres Teintées</h3>
-                        <p>Film solaire haute qualité pour vos vitres. Protection UV, intimité et esthétique. Plusieurs niveaux de teinte disponibles.</p>
-                        <span class="service-price">À partir de 15,000 DA</span>
-                    </div>
+                <div class="form-group">
+                    <label for="signup-telephone">Téléphone</label>
+                    <input type="tel" id="signup-telephone" name="telephone" placeholder="+213 XXX XXX XXX">
                 </div>
-
-                <div class="service-card" onclick="openServiceModal(6)">
-                    <div class="service-image">
-                        <img src="car.jpg" alt="Phares Teintés" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Teinte Phares/Feux</h3>
-                        <p>Personnalisation de vos phares et feux arrière avec films teintés. Look sportif garanti tout en respectant la réglementation.</p>
-                        <span class="service-price">À partir de 20,000 DA</span>
-                    </div>
+                <div class="form-group">
+                    <label for="signup-username">Nom d'utilisateur *</label>
+                    <input type="text" id="signup-username" name="signup_username">
                 </div>
-
-                <div class="service-card" onclick="openServiceModal(7)">
-                    <div class="service-image">
-                        <img src="r.jpg" alt="Stickers Graphics" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Stickers & Graphics</h3>
-                        <p>Création et pose de stickers personnalisés, bandes sportives, logos. Design unique selon vos envies avec des matériaux durables.</p>
-                        <span class="service-price">À partir de 25,000 DA</span>
-                    </div>
+                <div class="form-group">
+                    <label for="signup-password">Mot de passe *</label>
+                    <input type="password" id="signup-password" name="signup_password" minlength="6">
                 </div>
-
-                <div class="service-card" onclick="openServiceModal(8)">
-                    <div class="service-image">
-                        <img src="z.jpg" alt="Coating Céramique" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>Coating Céramique</h3>
-                        <p>Protection céramique longue durée pour votre carrosserie. Brillance exceptionnelle et protection contre les rayures et UV.</p>
-                        <span class="service-price">À partir de 60,000 DA</span>
-                    </div>
+                <div class="form-group">
+                    <label for="signup-message">Message pour l'administrateur (optionnel)</label>
+                    <textarea id="signup-message" name="message" rows="3" placeholder="Pourquoi souhaitez-vous accéder au panel admin ?"></textarea>
                 </div>
-
-                <div class="service-card" onclick="openServiceModal(9)">
-                    <div class="service-image">
-                        <img src="t.png" alt="Film Protection" loading="lazy">
-                    </div>
-                    <div class="service-content">
-                        <h3>PPF Pare-chocs Avant</h3>
-                        <p>Film de protection transparent pour pare-chocs avant. Protection contre les impacts de graviers et rayures du quotidien.</p>
-                        <span class="service-price">À partir de 45,000 DA</span>
-                    </div>
-                </div>
+                <button type="button" onclick="handleSignup()" class="btn" style="width: 100%;">Demander l'accès</button>
             </div>
-        </div>
-    </section>
 
-    <!-- FAQ Section -->
-    <section id="faq" class="faq">
-        <div class="container">
-            <h2 class="section-title">Questions Fréquentes</h2>
-            <div class="faq-container">
-                <div class="faq-item">
-                    <div class="faq-question" tabindex="0">
-                        <h3>Quelle est la différence entre peinture et covering?</h3>
-                        <span class="faq-icon">+</span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>La peinture est définitive et modifie la couleur originale du véhicule. Le covering vinyl est réversible et protège la peinture d'origine. Le vinyl offre plus d'options de finitions (mat, brillant, carbone, chrome).</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question" tabindex="0">
-                        <h3>Combien de temps durent vos travaux?</h3>
-                        <span class="faq-icon">+</span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Vitres teintées: 1 jour, Jantes: 2-3 jours, Covering complet: 3-5 jours, Peinture complète: 7-10 jours, Kit carrosserie: 5-7 jours. Les délais peuvent varier selon la complexité.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question" tabindex="0">
-                        <h3>Offrez-vous une garantie sur vos travaux?</h3>
-                        <span class="faq-icon">+</span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Oui, tous nos travaux sont garantis 1 an contre les défauts de fabrication et d'installation. Le covering vinyl est garanti 3 ans et le coating céramique 2 ans.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question" tabindex="0">
-                        <h3>Comment réserver et quels sont vos modes de paiement?</h3>
-                        <span class="faq-icon">+</span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Réservation via le formulaire ci-dessous ou par téléphone. Paiements acceptés: Baridi Mob, Dahabiya, espèces, virements bancaires. Acompte de 30% requis à la réservation.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item">
-                    <div class="faq-question" tabindex="0">
-                        <h3>Applications de paiement mobile supportées?</h3>
-                        <span class="faq-icon">+</span>
-                    </div>
-                    <div class="faq-answer">
-                        <p>Nous acceptons Baridi Mob, Dahabiya, et les paiements main à main. Possibilité de connecter directement avec ces apps pour faciliter les transactions. QR codes disponibles en atelier.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Contact Section -->
-    <section id="contact" class="contact">
-        <div class="container">
-            <h2 class="section-title">Réserver Votre Service</h2>
-            <div class="contact-content">
-                <div class="contact-info">
-                    <h3>Informations Contact</h3>
-                    <div class="contact-item">
-                        <strong>Téléphone:</strong>
-                        <p>+213 555 123 456</p>
-                    </div>
-                    <div class="contact-item">
-                        <strong>Email:</strong>
-                        <p>ryperformance@gmail.dz</p>
-                    </div>
-                    <div class="contact-item">
-                        <strong>Adresse:</strong>
-                        <p>Zone Industrielle, Oran 31000</p>
-                    </div>
-                    <div class="contact-item">
-                        <strong>Horaires:</strong>
-                        <p>Dim-Jeu: 8h-17h<br>Sam: 8h-14h</p>
-                    </div>
-                </div>
-
-                <div class="contact-form-container">
-                    <form id="booking-form" class="contact-form" autocomplete="off" novalidate>
-                        <div class="form-group">
-                            <label for="name">Nom Complet *</label>
-                            <input type="text" id="name" name="name" autocomplete="off" required>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="phone">Téléphone *</label>
-                                <input type="tel" id="phone" name="phone" autocomplete="off" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input type="email" id="email" name="email" autocomplete="off">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="model">Modèle Véhicule *</label>
-                                <input type="text" id="model" name="model" placeholder="Ex: BMW M3" autocomplete="off" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="year">Année *</label>
-                                <input type="number" id="year" name="year" min="1990" max="2026" placeholder="2020" autocomplete="off" required>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Services Souhaités *</label>
-                            <button type="button" id="select-services-btn" class="services-selector-btn">
-                                <span id="selected-services-display">Cliquez pour sélectionner les services</span>
-                                <span class="arrow-icon">▼</span>
-                            </button>
-                            <div id="selected-services-tags" class="selected-tags"></div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="message">Message ou Détails Spécifiques</label>
-                            <textarea id="message" name="message" rows="4" placeholder="Décrivez vos besoins, couleurs souhaitées, délais, etc."></textarea>
-                        </div>
-
-                        <button type="submit" class="submit-button">Réserver</button>
-                        <p class="booking-admin-hint">Tu peux te connecter avec l'admin</p>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-section">
-                    <h3>RY Performance</h3>
-                    <p>Votre spécialiste en personnalisation automobile premium à Oran. Qualité garantie et service client exceptionnel.</p>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Services</h4>
-                    <ul>
-                        <li>Peinture Automobile</li>
-                        <li>Covering Vinyl</li>
-                        <li>Kit Carrosserie</li>
-                        <li>Jantes Custom</li>
-                    </ul>
-                </div>
-                
-                <div class="footer-section">
-                    <h4>Contact</h4>
-                    <ul>
-                        <li>+213 555 123 456</li>
-                        <li>ryperformance@gmail.dz</li>
-                        <li>Zone Industrielle, Oran</li>
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="footer-bottom">
-                <p>&copy; 2025 RY Performance. Tous droits réservés.</p>
-            </div>
-        </div>
-    </footer>
-
-    <!-- ============================================
-         MODALS
-         ============================================ -->
-
-    <!-- Modal Galerie Avant/Après -->
-    <div id="gallery-modal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="gallery-modal-title">Transformation</h2>
-                <span class="close" onclick="closeModal('gallery-modal')">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="comparison-container">
-                    <div class="comparison-side">
-                        <h3 style="color: #e74c3c; margin-bottom: 1rem;">🔴 AVANT</h3>
-                        <img id="gallery-before-img" src="" alt="Avant">
-                    </div>
-                    <div class="comparison-side">
-                        <h3 style="color: #27ae60; margin-bottom: 1rem;">🟢 APRÈS</h3>
-                        <img id="gallery-after-img" src="" alt="Après">
-                    </div>
-                </div>
-                <div class="project-details">
-                    <h4>Détails du Projet</h4>
-                    <p id="gallery-modal-desc"></p>
-                    <p><strong>Véhicule:</strong> <span id="gallery-modal-vehicle"></span></p>
-                    <p><strong>Durée:</strong> <span id="gallery-modal-duration"></span></p>
-                    <p><strong>Services:</strong> <span id="gallery-modal-services"></span></p>
-                </div>
+            <div style="margin-top: 1.5rem; text-align: center;">
+                <a href="index.html" style="color: var(--primary-color); text-decoration: none;">← Retour au site</a>
             </div>
         </div>
     </div>
 
-    <!-- Modal Service Détails -->
-    <div id="service-modal" class="modal">
-        <div class="modal-content modal-large">
-            <div class="modal-header">
-                <h2 id="service-modal-title">Service</h2>
-                <span class="close" onclick="closeModal('service-modal')">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="service-detail-container">
-                    <div class="service-detail-left">
-                        <img id="service-modal-img" src="" alt="Service">
-                    </div>
-                    <div class="service-detail-right">
-                        <div class="service-detail-section">
-                            <h4>Description</h4>
-                            <p id="service-modal-desc"></p>
-                        </div>
-                        <div class="service-detail-section">
-                            <h4>Types & Options</h4>
-                            <ul id="service-modal-types"></ul>
-                        </div>
-                        <div class="service-detail-section">
-                            <h4>Durée Estimée</h4>
-                            <p id="service-modal-duration"></p>
-                        </div>
-                        <div class="service-detail-section">
-                            <h4>Tarif</h4>
-                            <p class="service-detail-price" id="service-modal-price"></p>
-                        </div>
-                        <a href="#contact" onclick="closeModal('service-modal')" class="btn" style="margin-top: 1.5rem; display: inline-block;">
-                            Demander un Devis
-                        </a>
-                    </div>
+    <!-- Dashboard Section -->
+    <div id="dashboardSection" class="dashboard">
+        <div class="container">
+            <!-- Header -->
+            <div class="header">
+                <div class="logo">RY Performance Admin</div>
+                <div class="user-info">
+                    <span id="userName">👨‍💼 Chargement...</span>
+                    <button onclick="logout()" class="btn btn-secondary btn-small">Déconnexion</button>
+                    <a href="index.html" class="btn btn-small">Retour au site</a>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Modal Sélection Services -->
-    <div id="services-modal" class="modal">
-        <div class="modal-content services-modal-content">
-            <span class="modal-close" onclick="closeModal('services-modal')">&times;</span>
-            <h3>Sélectionnez vos services</h3>
-            <div class="services-selection-grid">
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="peinture" data-price="50000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Peinture Automobile</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="vinyl" data-price="80000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Covering Vinyl Complet</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="bodykit" data-price="120000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Kit Carrosserie</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="rims" data-price="40000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Jantes Customization</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="tint" data-price="15000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Vitres Teintées</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="lights" data-price="20000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Phares/Feux Teintés</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="decals" data-price="25000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Stickers & Graphics</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="ceramic" data-price="60000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">Coating Céramique</span>
-                    </div>
-                </label>
-                <label class="service-checkbox-item">
-                    <input type="checkbox" name="services" value="ppf" data-price="45000">
-                    <span class="checkbox-custom"></span>
-                    <div class="service-check-content">
-                        <span class="service-check-name">PPF Pare-chocs</span>
-                    </div>
-                </label>
-            </div>
-            <button type="button" id="confirm-services" class="confirm-button">Confirmer la sélection</button>
-        </div>
-    </div>
-
-    <!-- Modal Confirmation Prix -->
-    <div id="price-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h2>Récapitulatif de votre Réservation</h2>
-                <span class="close" onclick="closeModal('price-modal')">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="price-details"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Succès -->
-    <div id="success-modal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 500px; text-align: center;">
-            <div class="modal-body" style="padding: 3rem 2rem;">
-                <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
-                <h2 style="color: var(--primary-color); margin-bottom: 1rem;">Réservation Confirmée !</h2>
-                <p style="font-size: 1.1rem; margin-bottom: 2rem;">
-                    Merci ! Nous avons bien reçu votre demande.<br>
-                    Notre équipe vous contactera très prochainement.
-                </p>
-                <button type="button" onclick="closeModal('success-modal')" class="btn">
-                    OK, Compris
+            <!-- Onglets de navigation -->
+            <div class="tabs-container" id="adminTabs">
+                <button class="tab-btn active" onclick="switchAdminTab('reservations')">Réservations</button>
+                <button class="tab-btn" onclick="switchAdminTab('demandes')" id="demandesTab" style="display: none;">
+                    Demandes d'accès <span class="badge" id="demandesCount">0</span>
+                </button>
+                <button class="tab-btn" onclick="switchAdminTab('messages')" id="messagesTab">
+                    Messagerie <span class="badge" id="messagesUnreadBadge">0</span>
                 </button>
             </div>
-        </div>
-    </div>
 
-    <!-- Widget Chat -->
-    <div id="chat-widget-btn" class="chat-widget-btn" onclick="toggleChatWidget(event)">
-        💬
-        <span class="chat-notification-badge" id="chatBadge" style="display: none;">!</span>
-    </div>
+            <!-- Onglet Réservations -->
+            <div id="reservationsTabContent" class="admin-tab-panel active">
+                <!-- Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalOrders">0</span>
+                        <div class="stat-label">Total Commandes</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="pendingOrders">0</span>
+                        <div class="stat-label">Non Traitées</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="returningCustomers">0</span>
+                        <div class="stat-label">Clients Fidèles</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="totalRevenue">0 DZD</span>
+                        <div class="stat-label">Chiffre d'Affaires</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="averageOrder">0 DZD</span>
+                        <div class="stat-label">Panier Moyen</div>
+                    </div>
+                </div>
 
-    <div id="chatWidget" class="chat-widget" style="display: none;" onclick="event.stopPropagation()">
-        <div class="chat-header">
-            <h3>Messagerie</h3>
-            <div class="chat-header-actions">
-                <button type="button" class="chat-logout-btn chat-logout-btn-header" onclick="logoutClient()">Se déconnecter</button>
-                <button onclick="toggleChatWidget(event)" class="chat-close-btn">&times;</button>
+                <!-- Commands Management -->
+                <div class="commands-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Gestion des Commandes</h3>
+                        <div style="display:flex;gap:1rem;align-items:center;">
+                            <button onclick="refreshOrders()" class="btn btn-success">🔄 Actualiser</button>
+                            <button onclick="openAddReservationModal()" class="btn btn-secondary">➕ Ajouter</button>
+                        </div>
+                    </div>
+
+                    <!-- Search and Filter -->
+                    <div class="search-filter">
+                        <input type="text" id="searchInput" placeholder="🔍 Rechercher par nom, téléphone, véhicule..." onkeyup="filterOrders()">
+                        <select id="statusFilter" onchange="filterOrders()">
+                            <option value="">Tous les statuts</option>
+                            <option value="Nouveau">Nouveau</option>
+                            <option value="En cours">En cours</option>
+                            <option value="Terminé">Terminé</option>
+                            <option value="Annulé">Annulé</option>
+                        </select>
+                        <select id="discountFilter" onchange="filterOrders()">
+                            <option value="">Tous les clients</option>
+                            <option value="true">Clients fidèles</option>
+                            <option value="false">Nouveaux clients</option>
+                        </select>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="ordersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID Commande</th>
+                                    <th>Client</th>
+                                    <th>Contact</th>
+                                    <th>Véhicule</th>
+                                    <th>Services</th>
+                                    <th>Prix</th>
+                                    <th>Message</th>
+                                    <th>Statut & Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody"></tbody>
+                        </table>
+                        <div id="emptyState" class="empty-state" style="display: none;">
+                            <div class="empty-state-icon">📋</div>
+                            <h3>Aucune commande trouvée</h3>
+                            <p>Les commandes apparaîtront ici une fois soumises.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Onglet Demandes d'accès -->
+            <div id="demandesTabContent" class="admin-tab-panel">
+                <div class="commands-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Demandes d'Accès en Attente</h3>
+                        <button onclick="loadPendingRequests()" class="btn btn-success">🔄 Actualiser</button>
+                    </div>
+                    <div class="demandes-grid" id="demandesGrid"></div>
+                </div>
+            </div>
+
+            <!-- Onglet Messagerie -->
+            <div id="messagesTabContent" class="admin-tab-panel">
+                <div class="commands-section">
+                    <div class="section-header">
+                        <h3 class="section-title">Messagerie Clients</h3>
+                        <button onclick="loadAdminConversations()" class="btn btn-success btn-small">🔄 Actualiser</button>
+                    </div>
+                    <div class="admin-chat-container">
+                        <!-- Liste des conversations -->
+                        <div class="admin-chat-conversations">
+                            <div class="admin-chat-conv-header">
+                                <h4>Conversations</h4>
+                            </div>
+                            <!-- Barre de recherche -->
+                            <div style="padding: 0.6rem 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                                <input
+                                    type="text"
+                                    id="adminConvSearchInput"
+                                    placeholder="🔍 Nom ou téléphone..."
+                                    oninput="adminConvSearchQuery = this.value; filterAdminConversations();"
+                                    style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:0.5rem 0.75rem;color:var(--text-primary,#fff);font-size:0.85rem;outline:none;"
+                                >
+                            </div>
+                            <div id="adminConversationsList" class="admin-chat-conv-list">
+                                <!-- Conversations chargées en JS -->
+                            </div>
+                        </div>
+
+                        <!-- Zone de discussion -->
+                        <div class="admin-chat-thread">
+                            <div class="admin-chat-thread-header">
+                                <div class="admin-chat-thread-title">
+                                    <h4 id="adminChatClientName">Sélectionnez une conversation</h4>
+                                    <span id="adminChatSubtitle" class="admin-chat-subtitle"></span>
+                                </div>
+                                <div class="admin-chat-thread-actions">
+                                    <button type="button" class="btn btn-danger btn-small" onclick="deleteAdminConversation()">Supprimer la conversation</button>
+                                </div>
+                            </div>
+
+                            <div id="adminChatMessages" class="admin-chat-messages">
+                                <!-- Messages chargés en JS -->
+                            </div>
+
+                            <div class="admin-chat-input" id="adminChatInputArea">
+                                <label for="adminChatImageInput" class="admin-chat-icon">📷</label>
+                                <input id="adminChatImageInput" type="file" accept="image/*,video/*" style="display:none" onchange="sendAdminChatImage(this)">
+
+                                <button id="adminRecordAudioBtn" type="button" class="admin-chat-icon">🎤</button>
+
+                                <input id="adminChatMessageInput" type="text" placeholder="Écrire un message..." onkeypress="handleAdminChatKeyPress(event)">
+
+                                <button type="button" class="admin-chat-send-btn" onclick="sendAdminChatText(event)">➤</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class="chat-body" id="chatBody">
-            <div id="chatLoginPrompt">
-                <p style="text-align:center; padding: 20px; color: var(--text-gray);">
-                    Connectez-vous pour discuter avec l'administrateur.
-                </p>
-                <div style="display: flex; gap: 10px; justify-content: center; margin-top:10px;">
-                    <button onclick="showClientAuthModal('login')" class="btn btn-small">Connexion</button>
-                    <button onclick="showClientAuthModal('signup')" class="btn btn-secondary btn-small">Inscription</button>
-                </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header">
+                <h3>📋 Détails de la Commande</h3>
+                <button class="close" onclick="closeModal('detailModal')">&times;</button>
             </div>
-            
-            <div id="chatConversationArea" style="display: none; height: 100%; flex-direction: column;">
-                <div class="chat-messages" id="chatMessagesList"></div>
-                
-                <div class="chat-input-area" onclick="event.stopPropagation()">
-                    <label for="chatImageInput" style="cursor:pointer; font-size: 24px;" onclick="event.stopPropagation()">📷</label>
-                    <input type="file" id="chatImageInput" accept="image/*,video/*" style="display:none" onchange="sendChatImage(this)">
-                    
-                    <button id="recordAudioBtn" type="button" style="background:none;border:none;font-size:24px;cursor:pointer;">🎤</button>
-                    
-                    <input type="text" id="chatMessageInput" placeholder="Écrivez..." onkeypress="handleChatKeyPress(event)" onclick="event.stopPropagation()">
-                    
-                    <button onclick="sendChatText(event)" class="btn-send-icon" type="button">➤</button>
-                </div>
+            <div id="detailContent" class="detail-content"></div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Confirmer la Suppression</h3>
+                <button class="close" onclick="closeModal('deleteModal')">&times;</button>
+            </div>
+            <p>Êtes-vous sûr de vouloir supprimer cette commande ? Cette action est irréversible.</p>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                <button onclick="closeModal('deleteModal')" class="btn btn-secondary">Annuler</button>
+                <button id="confirmDelete" class="btn btn-danger">Supprimer</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal Authentification Client -->
-    <div id="clientAuthModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <span class="modal-close" onclick="closeModal('clientAuthModal')">&times;</span>
-            <h3 id="authModalTitle">Connexion</h3>
-            
-            <form id="clientLoginForm" style="display:block;">
-                <div class="form-group">
-                    <label>Téléphone</label>
-                    <input type="tel" id="login-client-phone" required placeholder="Votre numéro">
-                </div>
-                <div class="form-group">
-                    <label>Mot de passe</label>
-                    <input type="password" id="login-client-password" required>
-                </div>
-                <button type="button" onclick="handleClientLogin()" class="btn" style="width:100%">Se connecter</button>
-            </form>
+    <!-- Price Modal -->
+    <div id="priceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Saisir le Prix</h3>
+                <button class="close" onclick="closeModal('priceModal')">&times;</button>
+            </div>
 
-            <form id="clientSignupForm" style="display:none;">
-                <div class="form-group">
-                    <label>Nom Complet</label>
-                    <input type="text" id="signup-client-name" required>
+            <div style="margin-bottom:1rem;">
+                <div class="price-modal-note">
+                    Remise fidélité automatique : <strong id="priceRemiseIndicator">—</strong>
                 </div>
-                <div class="form-group">
-                    <label>Téléphone</label>
-                    <input type="tel" id="signup-client-phone" required>
-                </div>
-                <div class="form-group">
-                    <label>Mot de passe</label>
-                    <input type="password" id="signup-client-password" required>
-                </div>
-                <button type="button" onclick="handleClientSignup()" class="btn" style="width:100%">S'inscrire</button>
-            </form>
-            
-            <p id="authError" style="color:red; text-align:center; margin-top:10px; display:none;"></p>
+            </div>
+
+            <input type="hidden" id="priceReservationId" />
+
+            <h4 class="price-modal-section-title">Services</h4>
+            <div class="form-group">
+                <label>Prix par service (DZD)</label>
+                <div id="priceServicesList" class="price-services-list"></div>
+                <small style="display:block;color:var(--silver);margin-top:0.35rem;">Le prix de base est calculé automatiquement à partir des services ci-dessous.</small>
+            </div>
+
+            <h4 class="price-modal-section-title">Calcul de la remise</h4>
+            <div class="form-group">
+                <label>Prix de base (DZD)</label>
+                <input type="number" id="priceBaseInput" min="0" step="1" placeholder="Ex: 200000" readonly>
+            </div>
+            <div class="form-group">
+                <label>Remise (%)</label>
+                <input type="number" id="priceDiscountPercentInput" min="0" max="100" step="0.1" placeholder="Ex: 20">
+            </div>
+            <div class="form-group">
+                <label>Délai de la remise</label>
+                <input type="text" id="priceDelaiInput" placeholder="Ex : 7 jours après validation du devis">
+                <small style="display:block;color:var(--silver);margin-top:0.35rem;">Saisie manuelle par l'administrateur (non remplie automatiquement). Texte affiché au client sur le devis si une remise est utilisée.</small>
+            </div>
+            <div class="form-group">
+                <label>Prix final (DZD)</label>
+                <input type="number" id="priceFinalInput" min="0" step="1" placeholder="Ex: 160000" readonly>
+            </div>
+            <div id="priceRemiseSummary" class="price-modal-note" style="margin-top:0.75rem;">
+                —
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button onclick="closeModal('priceModal')" class="btn btn-secondary">Annuler</button>
+                <button onclick="submitPriceUpdate()" class="btn btn-success">Enregistrer</button>
+            </div>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Modifier la Réservation</h3>
+                <button class="close" onclick="closeModal('editModal')">&times;</button>
+            </div>
+
+            <input type="hidden" id="editReservationId" />
+
+            <div class="form-group">
+                <label>Nom complet</label>
+                <input type="text" id="editNameInput" placeholder="Nom">
+            </div>
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" id="editPhoneInput" placeholder="Téléphone">
+            </div>
+            <div class="form-group">
+                <label>Email (optionnel)</label>
+                <input type="email" id="editEmailInput" placeholder="Email">
+            </div>
+            <div class="form-group">
+                <label>Modèle du véhicule</label>
+                <input type="text" id="editModelInput" placeholder="Ex: BMW M3">
+            </div>
+            <div class="form-group">
+                <label>Année</label>
+                <input type="number" id="editYearInput" min="1900" max="2100" step="1" placeholder="Ex: 2020">
+            </div>
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="editMessageInput" rows="4" placeholder="Message / détails"></textarea>
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button onclick="closeModal('editModal')" class="btn btn-secondary">Annuler</button>
+                <button onclick="submitEditReservation()" class="btn btn-success">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ajouter une Réservation</h3>
+                <button class="close" onclick="closeModal('addModal')">&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label>Nom complet</label>
+                <input type="text" id="addNameInput" placeholder="Nom">
+            </div>
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" id="addPhoneInput" placeholder="Téléphone">
+            </div>
+            <div class="form-group">
+                <label>Email (optionnel)</label>
+                <input type="email" id="addEmailInput" placeholder="Email">
+            </div>
+            <div class="form-group">
+                <label>Modèle du véhicule</label>
+                <input type="text" id="addModelInput" placeholder="Ex: BMW M3">
+            </div>
+            <div class="form-group">
+                <label>Année</label>
+                <input type="number" id="addYearInput" min="1900" max="2100" step="1" placeholder="Ex: 2020">
+            </div>
+            <div class="form-group">
+                <label>Message</label>
+                <textarea id="addMessageInput" rows="4" placeholder="Message / détails"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label>Services</label>
+                <div class="services-checkbox-grid" id="addServicesContainer">
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="peinture" data-name="Phares/Feux Teintés">Peinture Automobile</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="vinyl" data-name="Covering Vinyl Complet">Covering Vinyl</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="bodykit" data-name="Kit Carrosserie">Kit Carrosserie</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="rims" data-name="Jantes Customization">Jantes Custom</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="tint" data-name="Vitres Teintées">Vitres Teintées</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="lights" data-name="Phares/Feux Teintés">Phares/Feux Teintés</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="decals" data-name="Stickers & Graphics">Stickers</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="ceramic" data-name="Coating Céramique">Coating Céramique</label>
+                    <label class="service-checkbox-label"><input type="checkbox" class="service-checkbox" data-code="ppf" data-name="PPF Pare-chocs">PPF Pare-chocs</label>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:1rem;justify-content:flex-end;margin-top:1.5rem;">
+                <button onclick="closeModal('addModal')" class="btn btn-secondary">Annuler</button>
+                <button onclick="submitAddReservation()" class="btn btn-success">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- API : si admin ouvert via Node (port 5000) = même origine ; sinon http(s)://hostname:5000 ; file:// → 127.0.0.1:5000 -->
+    <script>
+(function () {
+    var loc = window.location;
+    if (loc.port === '5000') {
+        window.API_BASE = loc.origin.replace(/\/+$/, '');
+        return;
+    }
+    if (loc.protocol === 'file:' || !loc.hostname) {
+        window.API_BASE = 'http://127.0.0.1:5000';
+        return;
+    }
+    window.API_BASE = loc.protocol + '//' + loc.hostname + ':5000';
+})();
+    </script>
+<script src="admin.js"></script>
 </body>
 </html>

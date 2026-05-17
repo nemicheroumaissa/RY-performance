@@ -128,7 +128,10 @@ function initializeEventListeners() {
         modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
     });
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+            closeAdminMessageContextMenu();
+        }
     });
 }
 
@@ -333,13 +336,12 @@ function renderOrdersTable(orders) {
     }
     if (emptyState) emptyState.style.display = 'none';
     const sorted = [...orders].sort((a, b) => {
-    const priority = { 'Nouveau': 1, 'En cours': 2, 'Terminé': 3, 'Annulé': 4 };
-    const pa = priority[a.status] || 5;
-    const pb = priority[b.status] || 5;
-    if (pa !== pb) return pa - pb;
-    // À même statut : les plus anciennes en premier (ordre de traitement)
-    return (a.dateRaw || 0) - (b.dateRaw || 0);
-});
+        const priority = { 'Nouveau': 1, 'En cours': 2, 'Terminé': 3, 'Annulé': 4 };
+        const pa = priority[a.status] || 5;
+        const pb = priority[b.status] || 5;
+        if (pa !== pb) return pa - pb;
+        return (a.dateRaw || 0) - (b.dateRaw || 0);
+    });
     tbody.innerHTML = sorted.map(order => {
         const rowClass = (order.status === 'Terminé' || order.status === 'Annulé') ? 'style="background:rgba(255,255,255,0.06);"' : '';
         const statusClass = { 'Nouveau': 'status-new', 'En cours': 'status-progress', 'Terminé': 'status-done', 'Annulé': 'status-cancelled' }[order.status] || 'status-new';
@@ -582,13 +584,6 @@ function updatePriceRemiseSummary() {
     }
 }
 
-// ============================================
-// REMISE FIDÉLITÉ — autres réservations du client (hors « Annulé », hors la ligne courante) :
-//   0 autre  → 0%   (1re réservation)
-//   1 autre  → 5%   (2e)
-//   2 autres → 10%  (3e)
-//   3+ autres → 20% (4e et +)
-// ============================================
 function getLoyaltyPercent(completedCount) {
     if (completedCount <= 0) return 0;
     if (completedCount === 1) return 5;
@@ -652,7 +647,6 @@ async function openPriceModal(reservationId) {
         (order.finalPrice || 0) > 0 &&
         Number(order.finalPrice) < targetBase;
 
-    // Fidélité : priorité au n° de réservation (API), repli sur le téléphone si besoin
     let loyaltyCount = 0;
     let loyaltyPercent = 0;
     let loyaltyClientId = null;
@@ -704,7 +698,6 @@ async function openPriceModal(reservationId) {
     }
 
     if (hasSavedRemise) {
-        // Devis déjà sauvegardé avec remise : affiche le taux issu de base/final
         const savedPct =
             targetBase > 0
                 ? Math.round(((targetBase - Number(order.finalPrice)) / targetBase) * 10000) / 100
@@ -788,8 +781,6 @@ function recalculatePriceModalTotals() {
 
     const base = currentPriceServices.reduce((sum, svc) => sum + Math.max(0, Number(svc.price) || 0), 0);
 
-    // ✅ Si remise fidélité active : utilise le % exact (5, 10 ou 20%)
-    // Sinon : valeur saisie (sans réécrire le champ à chaque frappe pour ne pas casser la saisie)
     let discountPercent;
     if (currentPriceHasRemise) {
         discountPercent = Math.max(0, Math.min(100, Number(currentPriceDiscountPercent) || 0));
@@ -803,7 +794,6 @@ function recalculatePriceModalTotals() {
     updatePriceRemiseSummary();
 }
 
-// ✅ submitPriceUpdate — transmet dateEmission au backend pour le PDF
 async function submitPriceUpdate() {
     const id = document.getElementById('priceReservationId').value;
     recalculatePriceModalTotals();
@@ -813,7 +803,6 @@ async function submitPriceUpdate() {
     const remise      = Math.max(0, Math.round(prix_base - prix_final));
     const delaiRemise = (document.getElementById('priceDelaiInput')?.value || '').trim();
 
-    // ✅ Date d'émission = moment où l'admin valide et envoie le devis
     const dateEmission = new Date().toISOString();
 
     try {
@@ -978,24 +967,47 @@ function setAdminMessageStatusSpan(span, status) {
     else                        { span.textContent = 'Env.'; span.className = 'msg-status msg-status-sent'; }
 }
 
+// ============================================
+// MENU CONTEXTUEL ADMIN — AMÉLIORÉ AVEC STYLE
+// ============================================
 function closeAdminMessageContextMenu() {
     const menu = document.getElementById('admin-message-context-menu');
     if (menu) menu.remove();
     document.removeEventListener('click', closeAdminMessageContextMenu);
+    document.removeEventListener('contextmenu', closeAdminMessageContextMenu);
 }
 
 function showAdminMessageContextMenu(event, messageId) {
+    event.preventDefault();
     closeAdminMessageContextMenu();
+
     const menu = document.createElement('div');
     menu.id = 'admin-message-context-menu';
     menu.className = 'message-context-menu';
-    menu.style.cssText = `position:fixed;left:${Math.min(event.clientX, window.innerWidth-220)}px;top:${Math.min(event.clientY, window.innerHeight-80)}px;z-index:10050;`;
+
+    // Positionnement sécurisé (ne sort pas de l'écran)
+    const x = Math.min(event.clientX, window.innerWidth - 210);
+    const y = Math.min(event.clientY, window.innerHeight - 70);
+    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:10050;`;
+
     const btn = document.createElement('button');
-    btn.type = 'button'; btn.className = 'delete message-context-action'; btn.textContent = 'Supprimer ce message';
-    btn.addEventListener('click', () => { deleteAdminMessage(messageId); });
+    btn.type = 'button';
+    btn.className = 'message-context-action delete';
+    btn.innerHTML = '🗑️&nbsp;&nbsp;Supprimer ce message';
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteAdminMessage(messageId);
+        closeAdminMessageContextMenu();
+    });
+
     menu.appendChild(btn);
     document.body.appendChild(menu);
-    setTimeout(() => document.addEventListener('click', closeAdminMessageContextMenu), 10);
+
+    // Fermeture au prochain clic ou clic droit ailleurs
+    setTimeout(() => {
+        document.addEventListener('click', closeAdminMessageContextMenu);
+        document.addEventListener('contextmenu', closeAdminMessageContextMenu);
+    }, 10);
 }
 
 async function refreshAdminMessageStatuses() {
@@ -1139,7 +1151,13 @@ function displayAdminMessage(msg, containerOverride = null) {
     const row  = document.createElement('div');
     row.className = 'admin-chat-row ' + (isMe ? 'me' : 'other');
     row.dataset.messageId = msg.id;
-    row.addEventListener('contextmenu', (e) => { e.preventDefault(); showAdminMessageContextMenu(e, msg.id); });
+
+    // Clic droit → menu contextuel (admin peut supprimer tous les messages)
+    row.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showAdminMessageContextMenu(e, msg.id);
+    });
+
     const inner  = document.createElement('div');
     inner.className = 'admin-chat-row-inner';
     const bubble = document.createElement('div');
@@ -1187,17 +1205,16 @@ function displayAdminMessage(msg, containerOverride = null) {
 }
 
 async function deleteAdminMessage(messageId) {
-    if (!confirm('Supprimer ce message ?')) { closeAdminMessageContextMenu(); return; }
+    if (!confirm('Supprimer ce message ?')) return;
     try {
         const res    = await fetch(`${API_URL}/chat/messages/${messageId}`, { method: 'DELETE' });
         const result = await res.json();
         if (result.success) {
             document.querySelector(`#adminChatMessages .admin-chat-row[data-message-id="${messageId}"]`)?.remove();
-            closeAdminMessageContextMenu();
             if (adminSocket?.connected) adminSocket.emit('delete_message', { messageId, conversationId: currentAdminConversationId });
             loadAdminConversations();
-        } else { alert(result.message || 'Suppression impossible'); closeAdminMessageContextMenu(); }
-    } catch (e) { console.error(e); closeAdminMessageContextMenu(); }
+        } else { alert(result.message || 'Suppression impossible'); }
+    } catch (e) { console.error(e); }
 }
 
 async function deleteAdminConversation() {
@@ -1331,4 +1348,4 @@ function stopAdminRecording() {
     rec.stop();
 }
 
-console.log('✅ Admin Panel COMPLET chargé (remise fidélité + dateEmission corrigées) !');
+console.log('✅ Admin Panel COMPLET chargé (menu contextuel amélioré + côté client) !');
