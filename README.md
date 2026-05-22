@@ -36,7 +36,7 @@ Le système contient également un espace administrateur complet pour la gestion
 
 ---
 
-# ✨ Fonctionnalités Principales
+# Fonctionnalités Principales
 
 ##  Catalogue de véhicules
 - Consultation des fiches techniques
@@ -51,17 +51,17 @@ Le système contient également un espace administrateur complet pour la gestion
 - Calcul du prix en temps réel
 - Sauvegarde de configuration
 
-## 💬 Messagerie instantanée
+## Messagerie instantanée
 - Communication client/admin
 - Assistance rapide
 - Questions sur les réservations et personnalisations
 
-## 📅 Réservations
+## Réservations
 - Demande de réservation
 - Gestion des commandes
 - Génération automatique des factures
 
-## 🔐 Système d’administration
+## Système d’administration
 ### Administrateur principal
 - Gestion complète du système
 - Validation des nouveaux administrateurs
@@ -75,7 +75,7 @@ Le système contient également un espace administrateur complet pour la gestion
 
 ---
 
-# 🔒 Sécurité
+# Sécurité
 
 - Protection contre SQL Injection
 - Validation côté serveur
@@ -86,7 +86,7 @@ Le système contient également un espace administrateur complet pour la gestion
 
 ---
 
-# 📧 Notifications Automatiques
+# Notifications Automatiques
 
 Le système envoie automatiquement :
 - une facture électronique après validation d’une réservation,
@@ -126,6 +126,7 @@ Enfin, le protocole HTTPS sera activé en environnement de production afin de ga
 
 4. Illustrations Visuelles de l'Interface Utilisateur 
 
-Les visuels ci-dessous présentent les principales interfaces destinées aux clients. Ils illustrent la page d'accueil, la consultation des services de personnalisation automobile, l'espace de réservation ainsi que le module de messagerie permettant la communication directe avec l'administration. 
+Les visuels ci-dessous présentent les principales interfaces destinées aux clients. Ils illustrent la page d'accueil, la consultation des services de personnalisation automobile, l'espace de réservation ainsi que le module de messagerie permettant la communication directe avec l'administration.
+![Accueil](images/ch3f_image16.png)
 4.1 Page d'Accueil 
 ch3f_image16.png
