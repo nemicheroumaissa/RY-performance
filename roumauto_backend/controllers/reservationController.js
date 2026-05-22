@@ -143,7 +143,7 @@ exports.createReservation = async (req, res) => {
         const [reservationResult] = await connection.query(
             `INSERT INTO reservations (order_id, client_id, modele_vehicule, annee_vehicule, message_client, prix_base, remise, prix_final, statut)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Nouveau')`,
-            ['TMP', clientId, model || '', year || '', message || null, basePrice || 0, discount || 0, finalPrice || basePrice || 0]
+            ['TMP', clientId, model || '', year || '', message || null, 0, 0, 0]
         );
         const reservationId = reservationResult.insertId;
         await connection.query('UPDATE reservations SET order_id = ? WHERE id = ?', [String(reservationId), reservationId]);

@@ -340,7 +340,7 @@ function renderOrdersTable(orders) {
         const pa = priority[a.status] || 5;
         const pb = priority[b.status] || 5;
         if (pa !== pb) return pa - pb;
-        return (a.dateRaw || 0) - (b.dateRaw || 0);
+        return (b.dateRaw || 0) - (b.dateRaw || 0);
     });
     tbody.innerHTML = sorted.map(order => {
         const rowClass = (order.status === 'Terminé' || order.status === 'Annulé') ? 'style="background:rgba(255,255,255,0.06);"' : '';
@@ -348,8 +348,8 @@ function renderOrdersTable(orders) {
         const servicesHtml = order.services.length > 0
             ? order.services.map(s => `<span class="service-badge">${escapeHtml(s)}</span>`).join('')
             : '<span style="color:var(--silver)">—</span>';
-        const hasFinalPrice = (order.finalPrice || 0) > 0;
-        const hasBasePrice  = (order.basePrice  || 0) > 0;
+        const hasFinalPrice = Number(order.finalPrice) > 0;
+const hasBasePrice  = Number(order.basePrice)  > 0;
         const hasRemise     = hasBasePrice && hasFinalPrice && order.basePrice > order.finalPrice;
         const delaiTxt      = (order.delaiRemise && String(order.delaiRemise).trim()) ? String(order.delaiRemise).trim() : '';
         let priceHtml = `<div style="font-weight:bold;color:var(--silver)">Prix à définir</div>`;
