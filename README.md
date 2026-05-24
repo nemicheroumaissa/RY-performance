@@ -124,6 +124,12 @@ Lorsqu'un nouvel administrateur effectue une demande d'inscription, une notifica
 
 Enfin, le protocole HTTPS sera activé en environnement de production afin de garantir le chiffrement complet de toutes les communications et d'assurer une sécurité optimale des échanges sur la plateforme. 
 
+#Diagramme UML
+![acceuil](capteures/21.png)
+![acceuil](capteures/22.png)
+![acceuil](capteures/23.png)
+![acceuil](capteures/24.png)
+
 4. Illustrations Visuelles de l'Interface Utilisateur
 ![acceuil](capteures/1.png)
 ![acceuil](capteures/2.png)
