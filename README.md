@@ -125,8 +125,30 @@ Lorsqu'un nouvel administrateur effectue une demande d'inscription, une notifica
 Enfin, le protocole HTTPS sera activé en environnement de production afin de garantir le chiffrement complet de toutes les communications et d'assurer une sécurité optimale des échanges sur la plateforme. 
 
 4. Illustrations Visuelles de l'Interface Utilisateur
-  ![acceuil](capteures/1.png)
+![acceuil](capteures/1.png)
+![acceuil](capteures/2.png)
+![acceuil](capteures/3.png)
+![acceuil](capteures/4.png)
+![acceuil](capteures/5.png)
+![acceuil](capteures/6.png)
+![acceuil](capteures/7.png)
+![acceuil](capteures/8.png)
+![acceuil](capteures/9.png)
+![acceuil](capteures/10.png)
+![acceuil](capteures/11.png)
 
 Les visuels ci-dessous présentent les principales interfaces destinées aux clients. Ils illustrent la page d'accueil, la consultation des services de personnalisation automobile, l'espace de réservation ainsi que le module de messagerie permettant la communication directe avec l'administration.
-ch3f_image16.png
-ch3f_image16.png
+
+5.Illustrations Visuelles de l'Interface Admin Principales 
+
+![acceuil](capteures/12.png)
+![acceuil](capteures/13.png)
+![acceuil](capteures/14.png)
+![acceuil](capteures/15.png)
+![acceuil](capteures/16.png)
+![acceuil](capteures/17.png)
+![acceuil](capteures/18.png)
+![acceuil](capteures/19.png)
+
+5.Illustrations Visuelles de l'Interface Admin Secondaire
+![acceuil](capteures/20.png)
